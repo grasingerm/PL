@@ -22,6 +22,8 @@ int main(int argc, char* argv[])
     double d;
     long double ld;
     
+    void* p;
+    
     printf("%40s: %4d\n", "Size of char", sizeof(c));
     printf("%40s: %4d\n", "Size of unsigned char", sizeof(uc));
     printf("\n");
@@ -45,6 +47,9 @@ int main(int argc, char* argv[])
     printf("%40s: %4d\n", "Size of float", sizeof(f));
     printf("%40s: %4d\n", "Size of double", sizeof(d));
     printf("%40s: %4d\n", "Size of long double", sizeof(ld));
+    printf("\n");
+    
+    printf("%40s: %4d\n", "Size of pointer", sizeof(p));
     printf("\n");
     
     return 0;
