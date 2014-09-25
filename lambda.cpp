@@ -1,6 +1,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <functional>
 
 using namespace std;
 
@@ -223,6 +224,30 @@ int main()
               << "=="
               << bind(stringify(5))(unit)()
               << std::endl;
+              
+    /* ================== PART 2 ==================================== */
+    cout << "======================= PART 2 ========================" << endl;
+    
+    /*
+    std::set<int, std::function<bool(int, int)>>
+        numbers([](int i, int j_ { return i < j; });
+        */
+    auto make_fibo = []()
+    {
+        return [](int n)
+        {
+            std::function<int(int)> recurse;
+            recurse = [&](int n)
+            {
+                return (n<=2) ? 1 : recurse(n-1) + recurse(n-2);
+            };
+            return recurse(n);
+        };
+    };
+    
+    auto fibo = make_fibo();
+    cout << "fibo(4) = " << fibo(4) << endl;
+    cout << "fibo(25) = " << fibo(25) << endl;
     
     return 0;
 }
