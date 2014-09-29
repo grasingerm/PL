@@ -8,12 +8,18 @@ project(project_name)
 # set(CC clang)
 # set(CXX clang)
 
+# set C++ standard
+#set(STDCXX c++14)
+set(STDCXX c++1y)
+#set(STDCXX c++11)
+#set(STDCXX c++0x)
+
 # set flags for warnings, errors, and standards
 set(CMAKE_BUILD_TYPE debug)
 set(CMAKE_C_FLAGS_DEBUG "-Wall -Wextra -g -std=c99 -pedantic -pedantic-errors")
 set(CMAKE_C_FLAGS_RELEASE "-Wall -Wextra -std=c99 -pedantic -pedantic-errors -O3")
-set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -std=c++11 -pedantic -pedantic-errors")
-set(CMAKE_CXX_FLAGS_RELEASE "-Wall -Wextra -std=c++11 -pedantic -pedantic-errors -O3")
+set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -std=${STDCXX} -pedantic -pedantic-errors")
+set(CMAKE_CXX_FLAGS_RELEASE "-Wall -Wextra -std=${STDCXX} -pedantic -pedantic-errors -O3")
 
 # build directories
 set(CMAKE_BINARY_DIR build)
