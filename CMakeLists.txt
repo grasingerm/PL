@@ -32,6 +32,11 @@ set(EXECUTABLE_OUTPUT_PATH bin)
 # include_directories(../../share)
 # link_directories(../src)
 
+# gtest
+# set(GTEST_DIR /usr/local/share/gtest-1.6.0)
+# include_directories(${GTEST_DIR}/include)
+# link_directories(${GTEST_DIR}/lib)
+
 # dependencies
 add_executable(some_executable some_source_files.cpp)
 
