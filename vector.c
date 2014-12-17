@@ -15,6 +15,8 @@ struct vector
   double* data;
 };
 
+typedef enum codes { LIN_SUCCESS, LIN_DIM_ERROR } lin_err_t;
+
 struct vector* vec_alloc (unsigned int size)
 {
   struct vector* vec = (struct vector *) malloc (sizeof (struct vector));
@@ -78,6 +80,85 @@ void vec_hex_mod (struct vector* vec, unsigned int i)
   vec -> data [1] = sin (M_PI / 3. * i);
 }
 
+void vec_zero (struct vector* vec)
+{
+  unsigned int i;
+  for (i = 0; i < vec -> n_elems; i++)
+    vec -> data [i] = 0;
+}
+
+lin_err_t vec_add2 (const struct vector* u, const struct vector* v, 
+  struct vector* result)
+{
+  unsigned int i;
+
+  if (u -> n_elems != v -> n_elems || u -> n_elems != result -> n_elems)
+    return LIN_DIM_ERROR;
+
+  vec_zero (result);
+
+  for (i = 0; i < u -> n_elems; i++)
+    result -> data [i] = u -> data [i] + v -> data [i];
+
+  return LIN_SUCCESS;
+}
+
+lin_err_t vec_add (unsigned int n, struct vector* result, ...)
+{
+  va_list args;
+  unsigned int i, a, dim = result -> n_elems;
+  struct vector* pv;
+
+  vec_zero (result);
+
+  va_start (args, result);
+
+  for (i = 0; i < n; i++)
+  {
+    pv = va_arg (args, struct vector*);
+
+    if (pv -> n_elems != dim)
+      return LIN_DIM_ERROR;
+
+    for (a = 0; a < dim; a++)
+      result -> data [a] += pv -> data [a];
+  }
+
+  va_end (args);
+
+  return LIN_SUCCESS;
+}
+
+lin_err_t vec_dot (const struct vector* u, const struct vector* v, double* res)
+{
+  unsigned int i;
+  double sum = 0;
+
+  if (u -> n_elems != v -> n_elems)
+    return LIN_DIM_ERROR;
+
+  for (i = 0; i < u -> n_elems; i++)
+    sum += u -> data [i] * v -> data [i];
+
+  *res = sum;
+  return LIN_SUCCESS;
+}
+
+bool vec_equal (const struct vector* u, const struct vector* v, 
+  const double tol)
+{
+  unsigned int i;
+
+  if (u -> n_elems != v -> n_elems)
+    return false;
+
+  for (i = 0; i < u -> n_elems; i++)
+    if (abs (u->data[i] - v->data[i]) > tol)
+      return false;
+
+  return true;
+}
+
 // TODO: make this work for arbitrary size vector
 char* vec_to_str (const struct vector* vec, char* buffer, const size_t buffer_sz)
 {
@@ -92,6 +173,7 @@ int main ()
   unsigned int i;
   struct vector vecs [N_VECS] = { {0, 0, NULL} };
   char vts_buffer [128];
+  char vts_buffer2 [128];
   const size_t vts_buffer_sz = sizeof (vts_buffer);
 
   for (i = 0; i < N_VECS; i++)
@@ -118,6 +200,61 @@ int main ()
     assert ( abs (vec_mag (vecs+i) - 1.0) < 0.001 && "not a unit vector" );
     printf ("%d, %s\n", i, vec_to_str (vecs+i, vts_buffer, vts_buffer_sz));
   }
+  fputc ('\n', stdout);
+
+  double m11 = 0, m12 = 0, m22 = 0;
+  puts ("Velocity moments:");
+  for (i = 0; i < N_VECS; i++)
+  {
+    m11 += vecs [i] . data [0] * vecs [i] . data [0];
+    m12 += vecs [i] . data [0] * vecs [i] . data [1];
+    m22 += vecs [i] . data [1] * vecs [i] . data [1];
+  }
+  printf ("m11 = %.2lf, m12 = %.2lf, m22 = %.2lf\n", m11, m12, m22);
+  fputc ('\n', stdout);
+
+
+  double dat1[2], dat2[2];
+  struct vector res1 = { 2, 2, dat1 }, res2 = { 2, 2, dat2 };
+  puts ("Momentum conservation of collisions:");
+
+  vec_add2 (vecs+2, vecs+5, &res1);
+  vec_add2 (vecs+0, vecs+3, &res2);
+  assert (vec_equal (&res1, &res2, 1e-3) 
+    && "collision 'a1' doesn't conserve momentum");
+  printf ("a1| pre: %s, post: %s\n", 
+    vec_to_str (&res1, vts_buffer, vts_buffer_sz),
+    vec_to_str (&res2, vts_buffer2, vts_buffer_sz)
+    );
+
+  vec_add (3, &res1, vecs+0, vecs+2, vecs+4);
+  vec_add (3, &res2, vecs+1, vecs+3, vecs+5);
+  assert (vec_equal (&res1, &res2, 1e-3) 
+    && "collision 'b' doesn't conserve momentum");
+  printf ("b| pre: %s, post: %s\n", 
+    vec_to_str (&res1, vts_buffer, vts_buffer_sz),
+    vec_to_str (&res2, vts_buffer2, vts_buffer_sz)
+    );
+
+  vec_add (4, &res1, vecs+0, vecs+1, vecs+3, vecs+4);
+  vec_add (4, &res2, vecs+1, vecs+2, vecs+4, vecs+5);
+  assert (vec_equal (&res1, &res2, 1e-3) 
+    && "collision 'c1' doesn't conserve momentum");
+  printf ("c1| pre: %s, post: %s\n", 
+    vec_to_str (&res1, vts_buffer, vts_buffer_sz),
+    vec_to_str (&res2, vts_buffer2, vts_buffer_sz)
+    );
+
+  vec_add (3, &res1, vecs+2, vecs+3, vecs+5);
+  vec_add (3, &res2, vecs+1, vecs+3, vecs+4);
+  assert (vec_equal (&res1, &res2, 1e-3) 
+    && "collision 'd1' doesn't conserve momentum");
+  printf ("d1| pre: %s, post: %s\n", 
+    vec_to_str (&res1, vts_buffer, vts_buffer_sz),
+    vec_to_str (&res2, vts_buffer2, vts_buffer_sz)
+    );
+  fputc ('\n', stdout);
+
 
   for (i = 0; i < N_VECS; i++)
     free ((vecs+i) -> data);
