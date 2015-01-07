@@ -64,7 +64,7 @@ void add_42_jibad(double* arr, const unsigned int n_rows, const unsigned int n_c
     gettimeofday(&end, NULL); \
     \
     fputs(description, stdout); \
-    printf("%.2lf ms\n", time_diff(&start, &end)); \
+    printf("%.6lf seconds\n", time_diff(&start, &end) / 1e6); \
   } while (0);
 
 int main ()
