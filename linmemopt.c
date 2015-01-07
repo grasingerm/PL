@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <sys/time.h>
 #include <string.h>
@@ -67,10 +66,30 @@ void add_42_jibad(double* arr, const unsigned int n_rows, const unsigned int n_c
     printf("%.6lf seconds\n", time_diff(&start, &end) / 1e6); \
   } while (0);
 
-int main ()
+int main (int argc, char* argv[])
 {
-  const unsigned long n = 10000;
-  const unsigned long m = 10000;
+  unsigned long n, m;
+  char* rest;
+
+  switch(argc)
+  {
+    case 1:
+      n = 10000;
+      m = n;
+      break;
+    case 2:
+      n = strtoul(argv[1], &rest, 10);
+      m = n;
+      break;
+    case 3:
+      n = strtoul(argv[1], &rest, 10);
+      m = strtoul(argv[2], &rest, 10);
+      break;
+    default:
+      printf("usage: %s [n_rows [n_cols] ]\n", argv[0]);
+      return -1;
+  }
+
   double *a = (double*) calloc (n*m, sizeof(double));
   if (a == NULL)
   {
