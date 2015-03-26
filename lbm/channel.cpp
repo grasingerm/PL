@@ -6,10 +6,10 @@
 using namespace arma;
 using namespace std;
 
-int main(int argc, char* argv[])
+int main()
 {
     /* domain */
-    const double width = 100.;
+    const double width = 1000.;
     const double height = 40.;
     const int n_x = 1000;
     const int n_y = 40;
@@ -27,11 +27,11 @@ int main(int argc, char* argv[])
     const double c_k = dx/dt;
     const double c_sq = c_k*c_k;
     const double omega = 1./(3.*alpha/(c_sq*dt)+0.5); /*!< collision freq */
-    const int num_tsteps = 40000;
-    const array<double,n_dir> w { 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36.,
-        1./36., 1./36. };
-    const array<int,n_dir> c_x { 0, 1, 0, -1, 0, 1, -1, -1, 1 };
-    const array<int,n_dir> c_y { 0, 0, 1, 0, -1, 1, 1, -1, -1 };
+    const int num_tsteps = 5000;
+    const array<double,n_dir> w {{ 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36.,
+        1./36., 1./36. }};
+    const array<int,n_dir> c_x {{ 0, 1, 0, -1, 0, 1, -1, -1, 1 }};
+    const array<int,n_dir> c_y {{ 0, 0, 1, 0, -1, 1, 1, -1, -1 }};
     
     /* initial conditions */
     const double u_o = 0.2;
@@ -114,14 +114,14 @@ int main(int argc, char* argv[])
             f[6](i,0) = f[8](i,0);
         }
         
-        for (auto i = 1; i < n_x; ++i) /* north bc bounce back */
+        for (auto i = 0; i <= n_x; ++i) /* north bc bounce back */
         {
             f[4](i,n_y) = f[2](i,n_y);
             f[8](i,n_y) = f[6](i,n_y);
             f[7](i,n_y) = f[5](i,n_y);
         }
         
-        for (auto j = 1; j <= n_y; ++j) /* east open */
+        for (auto j = 0; j <= n_y; ++j) /* east open */
         {
             f[1](n_x,j) = 2.0*f[1](n_x-1,j) - f[1](n_x-2,j);
             f[5](n_x,j) = 2.0*f[5](n_x-1,j) - f[5](n_x-2,j);
@@ -129,7 +129,7 @@ int main(int argc, char* argv[])
         }
         
         /* calculate macroscopic density */
-        for (auto j = 0; j < n_y; ++j)
+        for (auto j = 0; j <= n_y; ++j)
             for (auto i = 0; i <= n_x; ++i)
             {
                 double sum = 0.;
@@ -139,7 +139,7 @@ int main(int argc, char* argv[])
             
         /* calculate macroscopic flow velocity */
         for (auto i = 1; i <= n_x; ++i)
-            for (auto j = 1; j < n_y; ++j)
+            for (auto j = 0; j <= n_y; ++j)
             {
                 double usum = 0., vsum = 0.;
                 for (auto k = 0; k < n_dir; ++k)
@@ -155,7 +155,7 @@ int main(int argc, char* argv[])
          * velocity (v) should be zero. This is a rational assumption if we do
          * not know the outlet boundary condition.
          */
-        for (auto j = 1; j <= n_y; j++) v(n_x,j) = 0.;
+        for (auto j = 0; j <= n_y; j++) v(n_x,j) = 0.;
     }
     
     ofstream outfile;

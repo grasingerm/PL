@@ -9,11 +9,7 @@ set(CC clang)
 set(CXX clang)
 
 # set C++ standard
-#set(STDCXXFLAG )
-#set(STDCXXFLAG -std=c++14)
 set(STDCXXFLAG -std=c++11)
-#set(STDCXXFLAG -std=c++11)
-#set(STDCXXFLAG -std=c++0x)
 
 # set flags for warnings, errors, and standards
 set(CMAKE_BUILD_TYPE debug)

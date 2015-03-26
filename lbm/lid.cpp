@@ -6,7 +6,7 @@
 using namespace arma;
 using namespace std;
 
-int main(int argc, char* argv[])
+int main()
 {
     /* domain */
     const double width = 100.;
@@ -28,10 +28,10 @@ int main(int argc, char* argv[])
     const double c_sq = c_k*c_k;
     const double omega = 1./(3.*alpha/(c_sq*dt)+0.5); /*!< collision freq */
     const int num_tsteps = 40000;
-    const array<double,n_dir> w { 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36.,
-        1./36., 1./36. };
-    const array<int,n_dir> c_x { 0, 1, 0, -1, 0, 1, -1, -1, 1 };
-    const array<int,n_dir> c_y { 0, 0, 1, 0, -1, 1, 1, -1, -1 };
+    const array<double,n_dir> w {{ 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36.,
+        1./36., 1./36. }};
+    const array<int,n_dir> c_x {{ 0, 1, 0, -1, 0, 1, -1, -1, 1 }};
+    const array<int,n_dir> c_y {{ 0, 0, 1, 0, -1, 1, 1, -1, -1 }};
     
     /* initial conditions */
     const double u_o = 0.1;
