@@ -9,5 +9,7 @@ end
 @checkdebug(false, "false should warn us");
 @checkdebug(true, "true should not warn us");
 @checkdebug(1 == 1 && 2 == 2, "this is definitely true");
+@mdebug("yolo sauce");
+@mdebug("nolo sauce");
 
 println("checks finished.");
