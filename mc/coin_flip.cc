@@ -49,13 +49,13 @@ int main(int argc, char* argv[])
 
   for (unsigned int i = 0; i < n; ++i)
   {
-    cout << "----------" << i+1 << "----------" << endl;
+    // cout << "----------" << i+1 << "----------" << endl;
 
     unsigned int ntosses = 2; 
     int prevtoss = flip ();
     int currtoss = flip ();
 
-    cout << prevtoss << ", " << currtoss << endl;
+    // cout << prevtoss << ", " << currtoss << endl;
 
     while (prevtoss != currtoss)
     {
@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
       prevtoss = currtoss;
       currtoss = flip ();
 
-      cout << prevtoss << ", " << currtoss << endl;
+      // cout << prevtoss << ", " << currtoss << endl;
     }
 
     if (ntosses >= ptoss)
