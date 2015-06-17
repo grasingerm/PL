@@ -1,3 +1,9 @@
+module XtraMaps
+
+export pmap!, map_with_indices, map_with_indices!, pmap_with_indices, pmap_with_indices!
+export mmap_with_indices, mmap_with_indices!, pmmap_with_indices, pmmap_with_indices!
+export szeros, sones, sfill
+
 """
 Map over an array in place in parallel
 """
@@ -179,3 +185,8 @@ end
 sones(dims) = SharedArray(Float64, dims, init = S -> S[localindexes(S)] = 1);
 szeros(dims) = SharedArray(Float64, dims, init = S -> S[localindexes(S)] = 0);
 sfill(fill, dims) = SharedArray(typeof(fill), dims, init = S -> S[localindexes(S)] = fill);
+
+sones(t, dims) = SharedArray(t, dims, init = S -> S[localindexes(S)] = 1);
+szeros(t, dims) = SharedArray(t, dims, init = S -> S[localindexes(S)] = 0);
+
+end
