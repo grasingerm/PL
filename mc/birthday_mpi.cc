@@ -12,19 +12,23 @@
 #include <vector>
 
 typedef unsigned int uint;
+typedef unsigned long ulong;
 #define MASTER 0
 
 using namespace std;
 
-tuple<uint, uint> birthday_paradox(const uint ptoss, const uint nsides, 
-                                   int (*flip)());
+tuple<ulong, ulong> birthday_paradox(const uint ptoss, const uint nsides, 
+                                   function <int()> flip);
 
 int main(int argc, char* argv[])
 {
-  unsigned long n, ptoss, nsides, home_nsuccess, home_ntosses;
+  ulong n, ptoss, nsides, home_nsuccess, home_ntosses;
   char* rest;
   int taskid, numtasks, rc;
   double psuccess;
+
+  const char* helpstr = "usage: %s [ntries = 10000 [people = 30 [days = 365] ]"
+                        " ] \n";
 
   switch(argc)
   {
@@ -34,10 +38,18 @@ int main(int argc, char* argv[])
       nsides = 365;
       break;
     case 2:
-      n = strtoul(argv[2], &rest, 10);
-      ptoss = 30;
-      nsides = 365;
-      break;
+      if (strcmp(argv[1], "--help") == 0)
+      {
+        printf(helpstr, argv[0]);
+        exit(1);
+      }
+      else
+      {
+        n = strtoul(argv[2], &rest, 10);
+        ptoss = 30;
+        nsides = 365;
+        break;
+      }
     case 3:
       n = strtoul(argv[1], &rest, 10);
       ptoss = strtoul(argv[2], &rest, 10);
@@ -49,7 +61,7 @@ int main(int argc, char* argv[])
       nsides = strtoul(argv[3], &rest, 10);
       break;
     default:
-      printf("usage: %s [ntries [people [days] ] ] \n", argv[0]);
+      printf(helpstr, argv[0]);
       exit(-1);
   }
 
@@ -58,8 +70,8 @@ int main(int argc, char* argv[])
   uniform_int_distribution<int> dist (0, nsides-1);
   auto flip = bind (dist, re);
 
-  uint nsuccess = 0; //!< number of times it takes less than "n" people
-  uint ntosses = 0;  //!< number of tosses total
+  ulong nsuccess = 0; //!< number of times it takes less than "n" people
+  ulong ntosses = 0;  //!< number of tosses total
 
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
@@ -72,18 +84,18 @@ int main(int argc, char* argv[])
   {
     std::tie (home_ntosses, home_nsuccess) = birthday_paradox(ptoss, nsides, 
                                                               flip);
+    printf("%lu, %lu\n", home_ntosses, home_nsuccess);
     
-    rc = MPI_Reduce(&home_ntosses, &ntosses, 1, MPI_DOUBLE, MPI_SUM, MASTER,
-                    MPI_COMM_WORLD);
+    rc = MPI_Reduce(&home_ntosses, &ntosses, 1, MPI_UNSIGNED_LONG, MPI_SUM, MASTER, MPI_COMM_WORLD);
     if (rc != MPI_SUCCESS)
       printf("%d: failure on mpc_reduce\n", taskid);
     
-    rc = MPI_Reduce(&home_nsuccess, &nsuccess, 1, MPI_DOUBLE, MPI_SUM, MASTER,
+    rc = MPI_Reduce(&home_nsuccess, &nsuccess, 1, MPI_UNSIGNED_LONG, MPI_SUM, MASTER,
                     MPI_COMM_WORLD);
     if (rc != MPI_SUCCESS)
       printf("%d: failure on mpc_reduce\n", taskid);
 
-    if (taskid == MASTER)
+    if (taskid == MASTER && false)
     {
       psuccess = (double) nsuccess / (double) (i * numtasks);
       printf("  After %8d attempts, probability of success = %.8f\n",
@@ -104,11 +116,11 @@ int main(int argc, char* argv[])
 }
 
 // birthday paradox
-tuple<uint, uint> birthday_paradox(const uint ptoss, const uint nsides, 
-                                   int (*flip)())
+tuple<ulong, ulong> birthday_paradox(const uint ptoss, const uint nsides, 
+                                     function <int()> flip)
 {
-  uint ntosses = 1;
-  uint nsuccess = 0;
+  ulong ntosses = 1;
+  ulong nsuccess = 0;
   vector<bool> bins(nsides, false);
   int day = flip();
 
@@ -122,5 +134,7 @@ tuple<uint, uint> birthday_paradox(const uint ptoss, const uint nsides,
   if (ntosses <= ptoss)
     nsuccess++;
 
-  return std::tuple<uint, uint>(ntosses, nsuccess);
+  printf("args: %d, %d; return: %lu, %lu\n", ptoss, nsides, ntosses, nsuccess);
+
+  return std::tuple<ulong, ulong>(ntosses, nsuccess);
 }
