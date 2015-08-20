@@ -6,19 +6,19 @@ using namespace std;
 struct B
 {
   virtual void f() const { cout << "B::f "; }
-  void g() const { cout << "B::g "; }
+  void g() const { cout << "B::g" << endl; }
 };
 
 struct D : B
 {
   void f() const { cout << "D::f "; }
-  void g() { cout << "D::g "; }
+  void g() { cout << "D::g" << endl; }
 };
 
 struct DD : D
 {
   void f() { cout << "DD::f "; }
-  void g() const { cout << "DD:g "; }
+  void g() const { cout << "DD:g" << endl; }
 };
 
 void call(const B& b)
@@ -48,8 +48,8 @@ int main()
 
   cout << endl;
 
-  auto ub = std::unique_ptr<B> (new (typeid(d)));
-  call(ub);
+  auto ub = std::unique_ptr<B>(new D);
+  call(*ub);
   ub->f();
   ub->g();
 

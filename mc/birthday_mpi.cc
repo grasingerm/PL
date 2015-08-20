@@ -22,10 +22,14 @@ tuple<ulong, ulong> birthday_paradox(const uint ptoss, const uint nsides,
 
 int main(int argc, char* argv[])
 {
-  ulong n, ptoss, nsides, home_nsuccess, home_ntosses;
+  ulong n, ptoss, nsides, tnsuccess, tntosses;
+  ulong home_nsuccess = 0, home_ntosses = 0; 
   char* rest;
   int taskid, numtasks, rc;
-  double psuccess;
+
+  MPI_Init(&argc, &argv);
+  MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
+  MPI_Comm_rank(MPI_COMM_WORLD, &taskid);
 
   const char* helpstr = "usage: %s [ntries = 10000 [people = 30 [days = 365] ]"
                         " ] \n";
@@ -73,45 +77,40 @@ int main(int argc, char* argv[])
   ulong nsuccess = 0; //!< number of times it takes less than "n" people
   ulong ntosses = 0;  //!< number of tosses total
 
-  MPI_Init(&argc, &argv);
-  MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
-  MPI_Comm_rank(MPI_COMM_WORLD, &taskid);
-
   printf("MPI task %d has started ...\n", taskid);
 
   uint iters_per_task = ceil((double)n / (double)numtasks);
   for (uint i = 0; i < iters_per_task; ++i)
   {
-    std::tie (home_ntosses, home_nsuccess) = birthday_paradox(ptoss, nsides, 
+    std::tie (tntosses, tnsuccess) = birthday_paradox(ptoss, nsides, 
                                                               flip);
-    printf("%lu, %lu\n", home_ntosses, home_nsuccess);
-    
-    rc = MPI_Reduce(&home_ntosses, &ntosses, 1, MPI_UNSIGNED_LONG, MPI_SUM, MASTER, MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-      printf("%d: failure on mpc_reduce\n", taskid);
-    
-    rc = MPI_Reduce(&home_nsuccess, &nsuccess, 1, MPI_UNSIGNED_LONG, MPI_SUM, MASTER,
-                    MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-      printf("%d: failure on mpc_reduce\n", taskid);
+    home_ntosses += tntosses;
+    home_nsuccess += tnsuccess;
+  }
+  
+  rc = MPI_Reduce(&home_ntosses, &ntosses, 1, MPI_UNSIGNED_LONG, MPI_SUM, 
+                  MASTER, MPI_COMM_WORLD);
+  if (rc != MPI_SUCCESS)
+    printf("%d: failure on mpc_reduce\n", taskid);
+  
+  rc = MPI_Reduce(&home_nsuccess, &nsuccess, 1, MPI_UNSIGNED_LONG, MPI_SUM,
+                  MASTER, MPI_COMM_WORLD);
+  if (rc != MPI_SUCCESS)
+    printf("%d: failure on mpc_reduce\n", taskid);
 
-    if (taskid == MASTER && false)
-    {
-      psuccess = (double) nsuccess / (double) (i * numtasks);
-      printf("  After %8d attempts, probability of success = %.8f\n",
-             i * numtasks, psuccess);
-    }
+  if (taskid == MASTER)
+  {
+    cout << endl << "----------results----------" << endl;
+    cout << "number of days: " << nsides << endl;
+    cout << "total iterations: " << n << endl;
+    cout << "total people: " << ntosses << endl;
+    cout << "avg number of people: " << ntosses / n << endl;
+    cout << "max number of people for success: " << ptoss << endl;
+    cout << "number of successes: " << nsuccess << endl;
+    cout << "probability of success: " << double(nsuccess) / n << endl;
   }
 
-  cout << endl << "----------results----------" << endl;
-  cout << "number of days: " << nsides << endl;
-  cout << "total iterations: " << n << endl;
-  cout << "total people: " << ntosses << endl;
-  cout << "avg number of people: " << ntosses / n << endl;
-  cout << "max number of people for success: " << ptoss << endl;
-  cout << "number of successes: " << nsuccess << endl;
-  cout << "probability of success: " << double(nsuccess) / n << endl;
-
+  MPI_Finalize();
   return 0;
 }
 
