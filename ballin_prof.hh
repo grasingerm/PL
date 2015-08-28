@@ -41,4 +41,38 @@ profile(const std::function<Result(Sig...)> &f, Sig... args)
   return std::tuple<Result, std::chrono::duration<double>> (result, end-start);
 }
 
+//! Profile a simple function given a function pointer
+//!
+//! \param f Function pointer
+//! \param args Function arguments
+//! \return function duration
+template<typename ...Sig>
+std::chrono::duration<double>
+simple_profile (void (*f)(Sig...), Sig... args)
+{
+  std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
+  start = std::chrono::high_resolution_clock::now();
+  f(args...);
+  end = std::chrono::high_resolution_clock::now();
+
+  return end - start;
+}
+
+//! Profile a simple function given a functor
+//!
+//! \param f Functor object
+//! \param args Function arguments
+//! \return function duration
+template<typename ...Sig>
+std::chrono::duration<double>
+simple_profile (const std::function<void(Sig...)> &f, Sig... args)
+{
+  std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
+  start = std::chrono::high_resolution_clock::now();
+  f(args...);
+  end = std::chrono::high_resolution_clock::now();
+
+  return end - start;
+}
+
 #endif // __BALLINPROF__
