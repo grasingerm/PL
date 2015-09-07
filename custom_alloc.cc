@@ -1,8 +1,11 @@
 #include <iostream>
-#include <memory>
 #include <vector>
+#include <cstdlib>
 
 using namespace std;
+
+// make memory pool usage more explicit
+using MemPool = std::vector<char>;
 
 class Base
 {
@@ -44,37 +47,36 @@ int main()
                             DynamicType::DERIVED, DynamicType::DERIVED,
                             DynamicType::BASE};
   
-
   cout << "sizeof(Base) = " << sizeof(Base) << "\n";
   cout << "sizeof(Derived) = " << sizeof(Derived) << "\n";
   cout << "max size() = " << max_class_hierarchy_size() << "\n";
 
-  unique_ptr<void> sp_mem_pool(::operator new(n * max_class_hierarchy_size()));
+  MemPool main_mem_pool;
+  main_mem_pool.reserve(n * max_class_hierarchy_size());
 
-  Base* mem_pool = static_cast<Base*>(sp_mem_pool.get());
+  void* mem_pool_init = static_cast<void*>(main_mem_pool.data());
+  Base* mem_pool_ptr = static_cast<Base*>(mem_pool_init);
   vector<Base*> bs(n);
 
   for (unsigned i = 0; i < n; ++i)
   {
-    //bs[i] = mem_pool;
+    bs[i] = mem_pool_ptr;
     switch(tps[i])
     {
       case DynamicType::BASE:
       {
-        bs[i] = new (mem_pool) Base(xs[i]);
-        Base* new_loc_base = static_cast<Base*>(mem_pool);
+        Base* new_loc_base = static_cast<Base*>(mem_pool_ptr);
+        new (new_loc_base) Base(xs[i]);
         new_loc_base++;
-        mem_pool = static_cast<Base*>(new_loc_base);
-        //bs[i] = new Base(xs[i]);
+        mem_pool_ptr = static_cast<Base*>(new_loc_base);
         break;
       }
       case DynamicType::DERIVED:
       {
-        bs[i] = new (mem_pool) Derived(xs[i], ys[i]);
-        Derived* new_loc_derived = static_cast<Derived*>(mem_pool);
+        Derived* new_loc_derived = static_cast<Derived*>(mem_pool_ptr);
+        new (new_loc_derived) Derived(xs[i], ys[i]);
         new_loc_derived++;
-        mem_pool = static_cast<Base*>(new_loc_derived);
-        //bs[i] = new Derived(xs[i], ys[i]);
+        mem_pool_ptr = static_cast<Base*>(new_loc_derived);
         break;
       }
       default:
@@ -85,6 +87,8 @@ int main()
   }
 
   for (const auto& b : bs) b->foo();
+
+  for (int i = n-1; i >= 0; --i) bs[i]->~Base();
 
   return 0;
 }
