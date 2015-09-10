@@ -21,6 +21,12 @@ int main ()
   {
     cout << e.what() << '\n';
   }
+
+  try
+  {
+    throw myex;
+  }
+  catch(...){}
   
   return 0;
 }
