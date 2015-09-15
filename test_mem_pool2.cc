@@ -16,12 +16,7 @@ class Derived : public Base
 {
 public:
   ~Derived() {}
-  Derived(int x, int y) : Base(x), y_(y) {}
-  Derived& operator=(const Derived& d) { Base::operator=(d); y_ = d.y(); return *this; }
-  inline int y() const { return y_; }
-  void foo() const { cout << "Derived::foo() = " << x() << ", " << y() << "\n"; }
-private:
-  int y_;
+  void foo() const { cout << "Derived::foo() = \n"; }
 };
 
 constexpr size_t max_class_hierarchy_size()
@@ -34,8 +29,6 @@ enum class DynamicType : unsigned { BASE, DERIVED };
 int main()
 {
   const static unsigned int n = 5;
-  const int xs[] = {1, 3, 2, -4, 5};
-  const int ys[] = {-4, 7, 12, 15, 3};
   const DynamicType tps[] = {DynamicType::BASE, DynamicType::DERIVED, 
                             DynamicType::DERIVED, DynamicType::DERIVED,
                             DynamicType::BASE};
@@ -54,12 +47,12 @@ int main()
     {
       case DynamicType::BASE:
       {
-        bs[i] = main_mem_pool.allocate<Base>(xs[i]);
+        bs[i] = main_mem_pool.allocate<Base>();
         break;
       }
       case DynamicType::DERIVED:
       {
-        bs[i] = main_mem_pool.allocate<Derived>(xs[i], ys[i]);
+        bs[i] = main_mem_pool.allocate<Derived>();
         break;
       }
       default:
