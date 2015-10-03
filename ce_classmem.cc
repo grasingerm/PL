@@ -6,10 +6,12 @@ using namespace std;
 class Test
 {
 private:
+  static constexpr unsigned k_ = 9;
   const unsigned yolo;
+  double arr[k_];
 public:
-  static constexpr unsigned k() { return 9; }
-  inline unsigned get_yolo() { return yolo; }
+  static constexpr unsigned k() { return k_; }
+  inline unsigned get_yolo() const { return yolo; }
   Test() : yolo(k()) {}
 };
 
