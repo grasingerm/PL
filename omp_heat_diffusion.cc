@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "ballin_prof.hh"
+#include <omp.h>
 
 #define NX 200
 #define LEFTVAL 1.0
@@ -34,16 +35,23 @@ int main(int argc, char* argv[]) {
   const double dx = 1.0/NX;
   const double dt = 0.5 * dx * dx;
 
-  initialize(uk, ukp1);
-
   tic();
-  for (int k = 0; k < NSTEPS; ++k) {
-    for (unsigned i = 1; i < NX-1; ++i)
-      ukp1[i] = uk[i] + (dt/(dx*dx))*(uk[i+1] - 2*uk[i] + uk[i-1]);
+  #pragma omp parallel prviate (k, i)
+  {
+    initialize(uk, ukp1);
 
-    temp = ukp1;
-    ukp1 = uk;
-    uk = temp;
+    for (int k = 0; k < NSTEPS; ++k) {
+      #pragma omp for schedule(static)
+      for (unsigned i = 1; i < NX-1; ++i)
+        ukp1[i] = uk[i] + (dt/(dx*dx))*(uk[i+1] - 2*uk[i] + uk[i-1]);
+
+      #pragma omp single
+      {
+        temp = ukp1;
+        ukp1 = uk;
+        uk = temp;
+      }
+    }
   }
 
   toc();

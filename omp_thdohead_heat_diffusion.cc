@@ -38,6 +38,7 @@ int main(int argc, char* argv[]) {
 
   tic();
   for (int k = 0; k < NSTEPS; ++k) {
+    #pragma omp parallel for schedule(static)
     for (unsigned i = 1; i < NX-1; ++i)
       ukp1[i] = uk[i] + (dt/(dx*dx))*(uk[i+1] - 2*uk[i] + uk[i-1]);
 

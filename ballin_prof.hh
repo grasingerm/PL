@@ -7,6 +7,23 @@
 #include <tuple>
 #include <functional>
 
+static std::chrono::time_point<std::chrono::high_resolution_clock> tic_start__ =
+    std::chrono::time_point<std::chrono::high_resolution_clock>::min();
+
+//! start stop watch
+inline void tic() { tic_start__ = std::chrono::high_resolution_clock::now(); }
+
+//! stop stop watch. tell time
+void toc() {
+  if (tic_start__ ==
+      std::chrono::time_point<std::chrono::high_resolution_clock>::min())
+    throw std::logic_error("toc() called before tic()");
+  const std::chrono::duration<double> elapsed =
+      std::chrono::high_resolution_clock::now() - tic_start__;
+  std::cout << "Time elapsed: " << elapsed.count() << " seconds.\n";
+  tic_start__ = std::chrono::high_resolution_clock::now();
+}
+
 //! Profile a simple function given a function pointer
 //!
 //! \param f Function pointer
