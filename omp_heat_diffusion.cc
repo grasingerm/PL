@@ -16,12 +16,18 @@
     } \
   } while(0)
 
-void initialize(double* uk, double* ukp1) {
-  uk[0] = LEFTVAL;
-  uk[NX-1] = RIGHTVAL;
-  for (unsigned i = 1; i < NX-1; ++i)
+void initialize(double* uk, double* ukp1, unsigned nnodes, int nprocs, 
+                int myid) {
+  for (unsigned i = 1; i <= nnodes; ++i)
     uk[i] = 0.0;
-  for (unsigned i = 0; i < NX; ++i)
+
+  if (myid == 0)
+    uk[0] = LEFTVAL;
+
+  if (myid == nprocs-1)
+    uk[nnodes-1] = RIGHTVAL;
+
+  for (unsigned i = 1; i <= nnodes; ++i)
     ukp1[i] = uk[i];
 }
 
