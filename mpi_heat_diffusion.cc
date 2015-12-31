@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <vector>
 #include <iostream>
 #include <cstdint>
 #include <cstdlib>
@@ -56,8 +57,11 @@ int main(int argc, char *argv[]) {
 
   printf("id = %d, n = %d\n", myid, num_points); 
 
-  uk    = (double *) malloc(sizeof(double) * (num_points + 2));
-  ukp1  = (double *) malloc(sizeof(double) * (num_points + 2));
+  //uk    = (double *) malloc(sizeof(double) * (num_points + 2));
+  //ukp1  = (double *) malloc(sizeof(double) * (num_points + 2));
+  vector<double> vuk(num_points + 2), vukp1(num_points + 2);
+  uk      = vuk.data();
+  ukp1    = vukp1.data();
 
   initialize(uk, ukp1, num_points, num_procs, myid);
 
@@ -103,9 +107,6 @@ int main(int argc, char *argv[]) {
   if (myid == 0) toc();
 
   print_values(uk, num_steps, num_points, myid);
-
-  free(uk);
-  free(ukp1);
 
   cout << MPI_Finalize() << '\n';
 
