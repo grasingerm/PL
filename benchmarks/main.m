@@ -20,7 +20,7 @@ end
 
 fprintf('\nTesting matrix multiplication\n');
 rand(3,3)*rand(3,3);
-for i=1:4
+for i=1:5
   if i == 2
     continue;
   end
@@ -35,7 +35,7 @@ end
 
 fprintf('\nTesting solution of linear systems\n');
 rand(3,3)\rand(3,1);
-for i=1:4
+for i=1:5
   if i == 2
     continue;
   end

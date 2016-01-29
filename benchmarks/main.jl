@@ -72,7 +72,7 @@ end
 
 println("\nTesting matrix multiplication");
 rand(3,3)*rand(3,3);
-for i=1:4
+for i=1:5
   if i == 2
     continue;
   end
@@ -87,7 +87,7 @@ end
 
 println("\nTesting solution of linear systems");
 rand(3,3)\rand(3,1);
-for i=1:4
+for i=1:5
   if i == 2
     continue;
   end
