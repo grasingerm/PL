@@ -1,0 +1,28 @@
+main
+Testing recursive fibanocci function
+Elapsed time is 0.000327 seconds.
+Elapsed time is 0.002132 seconds.
+Elapsed time is 0.140519 seconds.
+
+Testing nonrecursive fibanocci function
+Elapsed time is 0.000124 seconds.
+Elapsed time is 0.000004 seconds.
+Elapsed time is 0.000002 seconds.
+
+Testing matrix multiplication
+Elapsed time is 0.100808 seconds.
+Elapsed time is 0.001176 seconds.
+Elapsed time is 0.101247 seconds.
+
+Testing solution of linear systems
+Elapsed time is 0.001188 seconds.
+Elapsed time is 0.000382 seconds.
+Elapsed time is 0.009339 seconds.
+
+Finding prime numbers
+Elapsed time is 0.000205 seconds.
+Elapsed time is 0.000273 seconds.
+Elapsed time is 0.000370 seconds.
+Elapsed time is 0.000593 seconds.
+Elapsed time is 0.000960 seconds.
+diary off
