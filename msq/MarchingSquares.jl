@@ -44,11 +44,11 @@ function disambig_saddle_pts!(cell_values::Matrix{UInt8}, data::Matrix,
   const nrows, ncols  =   size(cell_values);
 
   for j=1:ncols, i=1:nrows
-    if cell_values[i, j] == 5
+    if cell_values[i, j] == 5::UInt8
       if mean(data[i:i+1, j:j+1]) < iso_value
         cell_values[i, j] <<= 1;
       end
-    elseif cell_values[i, j] == 5
+    elseif cell_values[i, j] == 10::UInt8
       if mean(data[i:i+1, j:j+1]) > iso_value
         cell_values[i, j] >>= 1;
       end
@@ -56,4 +56,4 @@ function disambig_saddle_pts!(cell_values::Matrix{UInt8}, data::Matrix,
   end
 end
 
-end # m dule
+end # module
