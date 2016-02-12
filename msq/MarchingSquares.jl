@@ -276,4 +276,18 @@ function lininterp_cell(cell_value::UInt8, i::Int, j::Int,
   end
 end
 
+#! Find the unit normal of a line
+function _unormal(ln::Line2D)
+  const dx =  ln.b.x - ln.a.x;
+  const dy =  ln.b.y - ln.a.y;
+  uns      =  Vector{Float64}[[-dy, dx], [dy, -dx]];
+
+  return map!(u -> u / norm(u, 2), uns);
+end
+
+#! Convert a grid of vectors of lines to unit normals 
+function _lines_to_normal(lines_grid::Matrix{Vector{Line2D}})
+  return map(lns -> map(ln -> _unormal(ln), lns), lines_grid);
+end
+
 end # module
