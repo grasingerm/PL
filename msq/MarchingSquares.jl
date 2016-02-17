@@ -272,7 +272,7 @@ function lininterp_cell(cell_value::UInt8, i::Int, j::Int,
   elseif  cell_value    ==   15
     return Line2D[Line2D(Point2D(0.0, 0.0), Point2D(0.0, 0.0))];
   else
-    error("Cell value $(cell_values[i, j]) invalid for 2D");
+    error("Cell value $(cell_value) invalid for 2D");
   end
 end
 
