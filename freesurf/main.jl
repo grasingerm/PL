@@ -1,4 +1,5 @@
 using PyPlot;
+using List;
 
 immutable Gas; end          const GAS         = Gas();
 immutable Fluid; end        const FLUID       = Fluid();
@@ -158,16 +159,228 @@ function stream!(f::Array{Float64, 3}, c::Matrix{Int64}, states::Matrix{State})
   copy!(f, f_new);
 end
 
+#! equilibrium distribution function
+function feq(ρ_ij::Real, w_k::Real, c_k::Vector{Float64}, u_ij::Vector{Float64})
+  const cdotu = dot(c_k, u_ij);
+  return w_k * (ρ_ij + 3*cdotu - 3/2*dot(u_ij, u_ij) + 9/2*(cdotu)^2);
+end
+
+# Reconstruct distributions functions from "empty" space
+function reconstruct_from_empty!(f::Array{Float64, 3}, w::Vector{Float64},
+                                 c::Matrix{Int64}, u::Array{Float64, 3},
+                                 ϵ::Matrix{Float64}, states::Matrix{State}, 
+                                 ρ_A::Real)
+  
+  const ni, nj  = size(states);
+  const nk      =   size(c, 2);
+
+  for j=1:nj, i=1:ni, k=1:nk-1
+    if states[i, j] != INTERFACE; continue; end # only reconstruct at interface
+
+    const i_nbr     =   i + c[1,k];
+    const j_nbr     =   j + c[2,k];
+
+    if (i_nbr < 1 || i_nbr > ni || j_nbr < 1 || j_nbr > nj ||
+        states[i_nbr, j_nbr] != GAS)
+      continue;
+    end
+    
+    const opp_k     =   _opp_k(k);
+    const u_ij      =   u[:, i, j];
+
+    f[opp_k, i, j]  =   (feq(ρ_A, w[k], c[:, k], u_ij) + 
+                         feq(ρ_A, w[opp_k], c[:, opp_k], u_ij) - f[k, i, j]);
+  end
+end
+
+#TODO some if statements could move up out of an inner loop :( (duh)
+
+# Reconstruct distributions functions normal to interface
+function reconstruct_from_normal!(f::Array{Float64, 3}, w::Vector{Float64},
+                                  c::Matrix{Int64}, u::Array{Float64, 3},
+                                  ϵ::Matrix{Float64}, states::Matrix{State}, 
+                                  ρ_A::Real)
+  
+  const ni, nj  = size(states);
+  const nk      =   size(c, 2);
+
+  for j=1:nj, i=1:ni, k=1:nk-1
+    if states[i, j] != INTERFACE; continue; end # only reconstruct at interface
+
+    const ϵ_il      =   (i <= 1)  ? 0.0 : ϵ[i-1, j];
+    const ϵ_ir      =   (i >= ni) ? 0.0 : ϵ[i+1, j];
+    const ϵ_jd      =   (j <= 1)  ? 0.0 : ϵ[i, j-1];
+    const ϵ_ju      =   (j >= nj) ? 0.0 : ϵ[i, j+1];
+
+    const n_int     =   1/2 * Float64[ϵ_il - ϵ_jl; ϵ_jd - ϵ_ju];
+    const c_k       =   c[:, k];
+
+    if dot(n_int, c_k) <= 0
+      continue;
+    end
+
+    const opp_k     =   _opp_k(k);
+    const u_ij      =   u[:, i, j];
+
+    f[opp_k, i, j]  =   (feq(ρ_A, w[k], c_k, u_ij) + 
+                         feq(ρ_A, w[opp_k], c[:, opp_k], u_ij) - f[k, i, j]);
+
+  end
+end
+
+# Relax toward equilibrium
+function collide!(f::Array{Float64, 3}, w::Vector{Float64}, c::Matrix{Int64},
+                  ρ::Matrix{Float64}, u::Array{Float64, 3}, ω::Real,
+                  states::Matrix{State})
+
+  const ni, nj  = size(states);
+  const nk      =   size(c, 2);
+
+  for j=1:nj, i=1:ni, k=1:nk
+    if states[i, j] == GAS; continue; end
+
+    f[k, i, j] += ω * (feq(ρ[i, j], w[k], c[:, k], u[:, i, j]) - f[k, i, j]);
+  end
+end
+
+#! Enforce boundary conditions
+function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State})
+  const ni, nj  = size(states);
+
+  for i=1:ni
+    if states[i, 1]   != GAS
+      # south wall
+      f[2, i, 1]    =   f[4, i, 1]; 
+      f[5, i, 1]    =   f[7, i, 1]; 
+      f[6, i, 1]    =   f[8, i, 1];
+    end
+
+    if states[i, nj]  != GAS
+      # north wall
+      f[4, i, nj]   =   f[2, i, nj];
+      f[7, i, nj]   =   f[5, i, nj];
+      f[8, i, nj]   =   f[6, i, nj];
+    end
+  end
+
+  for j=1:nj
+    if states[1, j]   != GAS 
+      # west wall
+      f[1, 1, j]    =   f[3, 1, j]; 
+      f[5, 1, j]    =   f[7, 1, j]; 
+      f[8, 1, j]    =   f[6, 1, j]; 
+    end
+
+    if states[ni, j]  != GAS
+      # north wall
+      f[3, ni, j]    =   f[1, ni, j]; 
+      f[7, ni, j]    =   f[5, ni, j]; 
+      f[6, ni, j]    =   f[8, ni, j]; 
+    end
+  end
+end
+
+# Update fluid fraction of each interface cell
+function update_fluid_fraction!(ρ::Matrix{Float64}, ϵ::Matrix{Float64}, 
+                                m::Matrix{Float64}, states::Matrix{State},
+                                κ::Real)
+  const ni, nj      = size(states);
+  new_empty_cells   = DoublyLinkedList{Tuple{Int, Int}}();
+  new_fluid_cells   = DoublyLinkedList{Tuple{Int, Int}}();
+  
+  for j=1:nj, i=1:ni
+    if states[i, j] != INTERFACE; continue; end
+    ϵ[i, j] = ρ[i, j] / m[i, j];
+
+    if      m[i, j] > (1 + κ) * ρ[i, j]
+      push!(new_fluid_cells, (i, j));
+    elseif  m[i, j] < -κ * ρ[i, j]
+      push!(new_empty_cells, (i, j));
+    end
+  end
+
+  return new_empty_cells, new_fluid_cells;
+end
+
+# Update cell states
+function update_cell_states!(f::Array{Float64, 3}, c::Matrix{Int64}, 
+                             w::Matrix{Float64},
+                             ρ::Matrix{Float64}, u::Array{Float64},
+                             ϵ::Matrix{Float64}, m::Matrix{Float64}, 
+                             states::Matrix{State},
+                             new_empty_cells::DoublyLinkedList{Tuple{Int, Int}},
+                             new_fluid_cells::DoublyLinkedList{Tuple{Int, Int}})
+
+  const ni, nj  = size(states);
+  const nk      = size(c, 2);
+  
+  for node in new_fluid_cells # First the neighborhood of all filled cells are prepared
+    const i, j      =     node.val;
+    states[i, j]    =     FLUID;
+
+    # Calculate the total density and velocity of the neighborhood
+    ρ_sum           =     0.0;
+    u_sum           =     Float64[0.0; 0.0];
+    counter::UInt   =     0;
+    for k=1:nk-1
+      const i_nbr     =     i + c[1, k];
+      const j_nbr     =     j + c[2, k];
+
+      if (i_nbr < 1 || i_nbr > ni || j_nbr < 1 || j_nbr > nj ||
+          states[i_nbr, j_nbr] == GAS)
+        continue;
+      end
+
+      counter         +=     1;
+
+      ρ_sum           +=     ρ[i_nbr, j_nbr];
+      u_sum           +=     u[:, i_nbr, j_nbr];
+    end
+    ρ_avg           =       ρ_sum / counter;
+    u_avg           =       u_sum / counter;
+
+    # Construct interface cells from neighborhood average at equilibrium
+    for k=1:nk-1
+      const i_nbr     =     i + c[1, k];
+      const j_nbr     =     j + c[2, k];
+
+      if (i_nbr < 1 || i_nbr > ni || j_nbr < 1 || j_nbr > nj ||
+          states[i_nbr, j_nbr] == FLUID)
+        continue;
+      end
+
+      # If it is already an interface cell, make sure it is not emptied
+      if (states[i_nbr, j_nbr] != INTERFACE || 
+          (remove!(new_empty_cells, (i_nbr, j_nbr)) == nothing))
+
+        states[i_nbr, j_nbr] = INTERFACE;
+        for kk=1:nk
+          f[kk, i_nbr, j_nbr]   =   feq(ρ_avg, w[kk], c[:, kk], u_avg);
+        end
+
+      end
+    end
+  end
+
+  for j=1:nj, i=1:ni
+    if states[i, j] == INTERFACE
+      if m[i, j] < -κ * rho[i, j]       # emptied
+      end
+    end
+  end
+end
+
 # Main function
 function _main()
   const   nx::UInt      =     100;
   const   ny::UInt      =     100;
 
-  const   nu            =     0.2;
-  const   ω             =     1.0 / (nu + 0.5);
-  const   ρ_0           =     1.0;
+  const   nu            =     0.2;                # viscosity
+  const   ω             =     1.0 / (nu + 0.5);   # collision frequency
+  const   ρ_0           =     1.0;                # reference density
+  const   ρ_A           =     1.0;                # atmosphere pressure
 
-  const   κ             =     1.0e-3;
+  const   κ             =     1.0e-3;             # state change (mass) offset
   
   const   nsteps::UInt  =     40000;
 
@@ -197,19 +410,25 @@ function _main()
     stream!(f, c, states);
 
     # reconstruct DFs from empty cells
-    reconstruct_from_empty!();
+    reconstruct_from_empty!(f, w, c, u, ϵ, states, ρ_A);
 
     # reconstruct DFs along interface normal
-    reconstruct_from_interface!();
+    reconstruct_from_normal!(f, w, c, u, ϵ, states, ρ_A);
 
     # perform collision
-    collide!();
+    collide!(f, w, c, ρ, u, ω, states);
 
     # boundary conditions
-    boundary_conditions!();
+    boundary_conditions!(f, states);
+
+    # calculate macroscopic variables
+    map_to_macro!(f, c, ρ, u);
+
+    # update fluid fraction
+    elst, flst = update_fluid_fraction!(ρ, ϵ, m, states, κ);
 
     # update cell states
-    update_cell_states!();
+    update_cell_states!(f, c, w, ρ, u, ϵ, m, states, elst, flst);
   end
 
 end
