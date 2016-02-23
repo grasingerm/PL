@@ -45,23 +45,23 @@ function init!(f, c, w, ρ, u, m, ϵ, states, ρ_0; fill_x::Real=0.5, fill_y=1.0
   const nk      =   length(w);
 
   for j=1:nj, i=1:ni, k=1:nk
-    f[i,j]      =   ρ_0 / w[k];
+    f[k, i, j]      =   ρ_0 / w[k];
   end
 
   map_to_macro!(f, c, ρ, u);
 
   for j=1:fill_nj, i=1:fill_ni
-    m[i,j]      =   ρ[i,j];
-    ϵ[i,j]      =   1.0;
-    states[i,j] =   FLUID;
+    m[i, j]      =   ρ[i, j];
+    ϵ[i, j]      =   1.0;
+    states[i, j] =   FLUID;
   end
 
   for j=1:fill_nj
     const i     =   fill_ni + 1;
 
-    m[i,j]      =   ρ[i,j] / 2.0;
-    ϵ[i,j]      =   0.5;
-    states[i,j] =   INTERFACE;
+    m[i, j]      =   ρ[i, j] / 2.0;
+    ϵ[i, j]      =   0.5;
+    states[i, j] =   INTERFACE;
   end
 end
 
@@ -503,7 +503,8 @@ function _main()
   # iterate through time steps
   for step=1:nsteps
     # mass transfer
-    @debug_mass_cons(@show masstransfer!(f, ϵ, m), "mass transfer", m);
+    #@debug_mass_cons(@show masstransfer!(f, ϵ, m), "mass transfer", m);
+    masstransfer!(f, ϵ, m);
 
     # stream
     stream!(f, c, states);
@@ -527,10 +528,11 @@ function _main()
     elst, flst = update_fluid_fraction!(ρ, ϵ, m, states, κ);
 
     # update cell states
-    @debug_mass_cons(
+    #=@debug_mass_cons(
       update_cell_states!(f, c, w, ρ, u, ϵ, m, states, elst, flst),
       "update cell states",
-      m);
+      m);=#
+    update_cell_states!(f, c, w, ρ, u, ϵ, m, states, elst, flst);
 
     # process
     if step % 25 == 0
