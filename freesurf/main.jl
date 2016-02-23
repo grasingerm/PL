@@ -1,9 +1,9 @@
 using PyPlot;
 using List;
 
-immutable Gas; end          const GAS         = Gas();
-immutable Fluid; end        const FLUID       = Fluid();
-immutable Interface; end    const INTERFACE   = Interface();
+immutable Gas; end;          const GAS         = Gas();
+immutable Fluid; end;        const FLUID       = Fluid();
+immutable Interface; end;    const INTERFACE   = Interface();
 
 typealias State Union{Gas, Fluid, Interface};
 
@@ -215,31 +215,29 @@ function reconstruct_from_normal!(f::Array{Float64, 3}, w::Vector{Float64},
     const n_int     =   1/2 * Float64[ϵ_il - ϵ_jl; ϵ_jd - ϵ_ju];
     const c_k       =   c[:, k];
 
-    if dot(n_int, c_k) <= 0
-      continue;
+    if dot(n_int, c_k) > 0
+      const opp_k     =   _opp_k(k);
+      const u_ij      =   u[:, i, j];
+
+      f[opp_k, i, j]  =   (feq(ρ_A, w[k], c_k, u_ij) + 
+                           feq(ρ_A, w[opp_k], c[:, opp_k], u_ij) - f[k, i, j]);
     end
-
-    const opp_k     =   _opp_k(k);
-    const u_ij      =   u[:, i, j];
-
-    f[opp_k, i, j]  =   (feq(ρ_A, w[k], c_k, u_ij) + 
-                         feq(ρ_A, w[opp_k], c[:, opp_k], u_ij) - f[k, i, j]);
-
   end
 end
 
 # Relax toward equilibrium
 function collide!(f::Array{Float64, 3}, w::Vector{Float64}, c::Matrix{Int64},
                   ρ::Matrix{Float64}, u::Array{Float64, 3}, ω::Real,
-                  states::Matrix{State})
+                  ϵ::Matrix{Float64}, states::Matrix{State}, g::Vector{Float64})
 
   const ni, nj  = size(states);
   const nk      =   size(c, 2);
 
   for j=1:nj, i=1:ni, k=1:nk
-    if states[i, j] == GAS; continue; end
-
-    f[k, i, j] += ω * (feq(ρ[i, j], w[k], c[:, k], u[:, i, j]) - f[k, i, j]);
+    if states[i, j] != GAS
+      f[k, i, j] += (ω * (feq(ρ[i, j], w[k], c[:, k], u[:, i, j]) - f[k, i, j])
+                     + ϵ[i, j] * w[k] * 3.0 * dot(g, c[:, k]));
+    end
   end
 end
 
@@ -339,46 +337,147 @@ function update_cell_states!(f::Array{Float64, 3}, c::Matrix{Int64},
     ρ_avg           =       ρ_sum / counter;
     u_avg           =       u_sum / counter;
 
+    cells_to_redist_to  =   DoublyLinkedList{Tuple{Int, Int}}();
+    counter             =   0;
+
     # Construct interface cells from neighborhood average at equilibrium
     for k=1:nk-1
       const i_nbr     =     i + c[1, k];
       const j_nbr     =     j + c[2, k];
 
-      if (i_nbr < 1 || i_nbr > ni || j_nbr < 1 || j_nbr > nj ||
-          states[i_nbr, j_nbr] == FLUID)
+      if i_nbr < 1 || i_nbr > ni || j_nbr < 1 || j_nbr > nj
+        continue;
+      end
+
+      if states[i_nbr, j_nbr] == FLUID
+        push!(cells_to_redist_to, (i_nbr, j_nbr));
+        counter +=  1;
         continue;
       end
 
       # If it is already an interface cell, make sure it is not emptied
-      if (states[i_nbr, j_nbr] != INTERFACE || 
-          (remove!(new_empty_cells, (i_nbr, j_nbr)) == nothing))
-
+      if states[i_nbr, j_nbr] == INTERFACE
+        remove!(new_empty_cells, (i_nbr, j_nbr));
+        push!(cells_to_redist_to, (i_nbr, j_nbr));
+        counter +=  1;
+      else
         states[i_nbr, j_nbr] = INTERFACE;
         for kk=1:nk
           f[kk, i_nbr, j_nbr]   =   feq(ρ_avg, w[kk], c[:, kk], u_avg);
         end
-
+        push!(cells_to_redist_to, (i_nbr, j_nbr));
+        counter +=  1;
       end
+    end # end reflag neighbors loop
+
+    # redistribute mass amoung valid neighbors
+    const mex = m[i, j] - ρ[i, j];
+    for node in cells_to_redist_to
+      const ii, jj      =   node.val;
+      m[ii, jj]        +=   mex; 
     end
+    m[i, j]   = ρ[i, j]; # set mass to local ρ
   end
 
-  for j=1:nj, i=1:ni
-    if states[i, j] == INTERFACE
-      if m[i, j] < -κ * rho[i, j]       # emptied
+  for node in new_empty_cells # convert emptied cells to gas cells
+    const i, j      =     node.val;
+    states[i, j]    =     GAS;
+
+    cells_to_redist_to  =   DoublyLinkedList{Tuple{Int, Int}}();
+    counter::UInt       =   0;
+    for k=1:nk-1
+      const i_nbr     =     i + c[1, k];
+      const j_nbr     =     j + c[2, k];
+
+      if (i_nbr >= 1 && i_nbr <= ni && j_nbr >= 1 && j_nbr <= nj &&
+          states[i_nbr, j_nbr] == FLUID)
+        states[i_nbr, j_nbr] =  INTERFACE;
+        counter             +=  1;
+        push!(cells_to_redist_to, (i_nbr, j_nbr));
       end
     end
+
+    for nodenode in cells_to_redist_to # redistribute excess mass
+      const ii, jj  =   nodenode.val;
+      m[ii, jj]    +=   m[i, j] / counter;
+    end
+
+    m[i, j]   =   0.0;
+    ϵ[i, j]   =   0.0;
+  end
+
+  # Redistribute excess mass
+  for node in new_fluid_cells # Redistribute excess mass from new fluid cells
+    const i, j      =     node.val;
+    
+    cells_to_redist_to  =     DoublyLinkedList{Tuple{Int, Int}}();
+    counter::UInt       =     0;
+
+    # Construct interface cells from neighborhood average at equilibrium
+    for k=1:nk-1
+      const i_nbr     =     i + c[1, k];
+      const j_nbr     =     j + c[2, k];
+
+      if (i_nbr >= 1 && i_nbr <= ni && j_nbr >= 1 && j_nbr <= nj &&
+          states[i_nbr, j_nbr] == INTERFACE)
+        push!(cells_to_redist_to, (i_nbr, j_nbr));
+        counter +=  1;
+      end
+    end # find inteface loop
+
+    # redistribute mass amoung valid neighbors
+    const mex = m[i, j] - ρ[i, j];
+    for node in cells_to_redist_to
+      const ii, jj      =   node.val;
+      m[ii, jj]        +=   mex; 
+      ϵ[ii, jj]         =   m[ii, jj] / ρ[ii, jj];
+    end
+
+    m[i, j]   = ρ[i, j]; # set mass to local ρ
+    ϵ[i, j]   = 1.0;
+  end
+
+  for node in new_empty_cells # Redistribute excess mass from emptied cells
+    const i, j      =     node.val;
+    
+    cells_to_redist_to  =     DoublyLinkedList{Tuple{Int, Int}}();
+    counter::UInt       =     0;
+
+    # Construct interface cells from neighborhood average at equilibrium
+    for k=1:nk-1
+      const i_nbr     =     i + c[1, k];
+      const j_nbr     =     j + c[2, k];
+
+      if (i_nbr >= 1 && i_nbr <= ni && j_nbr >= 1 && j_nbr <= nj &&
+          states[i_nbr, j_nbr] == INTERFACE)
+        push!(cells_to_redist_to, (i_nbr, j_nbr));
+        counter +=  1;
+      end
+    end # find inteface loop
+
+    # redistribute mass amoung valid neighbors
+    const mex = m[i, j];
+    for node in cells_to_redist_to
+      const ii, jj      =   node.val;
+      m[ii, jj]        +=   mex;
+      ϵ[ii, jj]         =   m[ii, jj] / ρ[ii, jj];
+    end
+
+    m[i, j]   = 0.0;
+    ϵ[i, j]   = 0.0;
   end
 end
 
 # Main function
 function _main()
-  const   nx::UInt      =     100;
-  const   ny::UInt      =     100;
+  const   nx::UInt      =     256;
+  const   ny::UInt      =     256;
 
   const   nu            =     0.2;                # viscosity
   const   ω             =     1.0 / (nu + 0.5);   # collision frequency
   const   ρ_0           =     1.0;                # reference density
   const   ρ_A           =     1.0;                # atmosphere pressure
+  const   g             =     [0.0; -1.0];        # gravitation acceleration
 
   const   κ             =     1.0e-3;             # state change (mass) offset
   
@@ -416,7 +515,7 @@ function _main()
     reconstruct_from_normal!(f, w, c, u, ϵ, states, ρ_A);
 
     # perform collision
-    collide!(f, w, c, ρ, u, ω, states);
+    collide!(f, w, c, ρ, u, ω, ϵ, states, g);
 
     # boundary conditions
     boundary_conditions!(f, states);
@@ -428,7 +527,19 @@ function _main()
     elst, flst = update_fluid_fraction!(ρ, ϵ, m, states, κ);
 
     # update cell states
-    update_cell_states!(f, c, w, ρ, u, ϵ, m, states, elst, flst);
+    @debug_mass_cons(
+      update_cell_states!(f, c, w, ρ, u, ϵ, m, states, elst, flst),
+      "update cell states",
+      m);
+
+    # process
+    if step % 25 == 0
+      clf();
+      cs = contourf(transpose(m), levels=[0.0, 0.25, 0.5, 0.75, 1.0]);
+      colorbar(cs);
+      draw();
+      pause(0.001);
+    end
   end
 
 end
