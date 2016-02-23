@@ -1,4 +1,5 @@
 using PyPlot;
+PyPlot.ion();
 using List;
 
 immutable Gas; end;          const GAS         = Gas();
@@ -45,7 +46,7 @@ function init!(f, c, w, ρ, u, m, ϵ, states, ρ_0; fill_x::Real=0.5, fill_y=1.0
   const nk      =   length(w);
 
   for j=1:nj, i=1:ni, k=1:nk
-    f[k, i, j]      =   ρ_0 / w[k];
+    f[k, i, j]      =   ρ_0 * w[k];
   end
 
   map_to_macro!(f, c, ρ, u);
@@ -102,30 +103,36 @@ function masstransfer!(f::Array{Float64, 3}, c::Matrix{Int64},
   const ni, nj    =     size(states);
   const nk        =     size(c, 2);
 
-  dm              =     0.0;
+  dm              =     zeros(nk, ni, nj);
 
   for j=1:nj, i=1:ni
-    if state[i,j] == INTERFACE
+    if states[i,j] == INTERFACE
       for k=1:nk-1
         const i_nbr   =   i + c[1,k];
         const j_nbr   =   j + c[2,k];
 
         if (i_nbr < 1 || i_nbr > ni || j_nbr < 1 || j_nbr > nj ||
             states[i_nbr, j_nbr] == GAS) # if out of bounds or at a gas cell
+            dm[k, i, j] = 0.0;
           continue;
         end
 
         const opp_k   =   _opp_k(k);
 
         if states[i_nbr, j_nbr]     ==  FLUID
-          dm  +=  m[i,j]  +=  f[opp_k, i_nbr, j_nbr] - f[k, i, j];
+          dm[k, i, j]      =  f[opp_k, i_nbr, j_nbr] - f[k, i, j];
+          m[i,j]          +=  dm[k, i, j];
         elseif states[i_nbr, j_nbr] ==  INTERFACE
-          dm  +=  m[i,j]  +=  (0.5 * (ϵ[i_nbr, j_nbr] + ϵ[i, j]) * 
+          dm[k, i, j]      =  (0.5 * (ϵ[i_nbr, j_nbr] + ϵ[i, j]) * 
                                (f[opp_k, i_nbr, j_nbr] - f[k, i, j]));
-        else; error("State $(states[i_nbr, j_nbr]), not understood");
+          m[i, j]         +=  dm[k, i, j];
+        else
+          error("State $(states[i_nbr, j_nbr]), not understood");
         end
 
       end # for each neighbor
+    else
+      dm[k, i, j] = 0.0;
     end # only transfer mass across interface cells
   end # for each node
 
@@ -160,7 +167,7 @@ function stream!(f::Array{Float64, 3}, c::Matrix{Int64}, states::Matrix{State})
 end
 
 #! equilibrium distribution function
-function feq(ρ_ij::Real, w_k::Real, c_k::Vector{Float64}, u_ij::Vector{Float64})
+function feq(ρ_ij::Real, w_k::Real, c_k::Vector{Int64}, u_ij::Vector{Float64})
   const cdotu = dot(c_k, u_ij);
   return w_k * (ρ_ij + 3*cdotu - 3/2*dot(u_ij, u_ij) + 9/2*(cdotu)^2);
 end
@@ -212,7 +219,7 @@ function reconstruct_from_normal!(f::Array{Float64, 3}, w::Vector{Float64},
     const ϵ_jd      =   (j <= 1)  ? 0.0 : ϵ[i, j-1];
     const ϵ_ju      =   (j >= nj) ? 0.0 : ϵ[i, j+1];
 
-    const n_int     =   1/2 * Float64[ϵ_il - ϵ_jl; ϵ_jd - ϵ_ju];
+    const n_int     =   1/2 * Float64[ϵ_il - ϵ_ir; ϵ_jd - ϵ_ju];
     const c_k       =   c[:, k];
 
     if dot(n_int, c_k) > 0
@@ -302,10 +309,9 @@ end
 
 # Update cell states
 function update_cell_states!(f::Array{Float64, 3}, c::Matrix{Int64}, 
-                             w::Matrix{Float64},
-                             ρ::Matrix{Float64}, u::Array{Float64},
-                             ϵ::Matrix{Float64}, m::Matrix{Float64}, 
-                             states::Matrix{State},
+                             w::Vector{Float64}, ρ::Matrix{Float64}, 
+                             u::Array{Float64, 3}, ϵ::Matrix{Float64}, 
+                             m::Matrix{Float64}, states::Matrix{State},
                              new_empty_cells::DoublyLinkedList{Tuple{Int, Int}},
                              new_fluid_cells::DoublyLinkedList{Tuple{Int, Int}})
 
@@ -477,7 +483,7 @@ function _main()
   const   ω             =     1.0 / (nu + 0.5);   # collision frequency
   const   ρ_0           =     1.0;                # reference density
   const   ρ_A           =     1.0;                # atmosphere pressure
-  const   g             =     [0.0; -1.0];        # gravitation acceleration
+  const   g             =     [0.0; -1.0e-2];     # gravitation acceleration
 
   const   κ             =     1.0e-3;             # state change (mass) offset
   
@@ -499,16 +505,40 @@ function _main()
   fill!(states, GAS);
 
   init!(f, c, w, ρ, u, m, ϵ, states, ρ_0);
+  
+  println("Initial mass: ", sum(m));
+  println();
+  println("Starting simulation...");
 
   # iterate through time steps
   for step=1:nsteps
+    init_mass   =   sum(m);
+
+    # process
+    if step % 1 == 0
+      clf();
+      cs = contourf(transpose(m), levels=[0.0, 0.25, 0.5, 0.75, 1.0]);
+      colorbar(cs);
+      draw();
+      pause(0.001);
+      println("step: ", step);
+    end
+
     # mass transfer
-    #@debug_mass_cons(@show masstransfer!(f, ϵ, m), "mass transfer", m);
-    masstransfer!(f, ϵ, m);
+    #=@debug_mass_cons(
+      @show masstransfer!(f, c, ϵ, m, states),
+      "mass transfer",
+      m);=#
+    println("Transfering mass...");
+    im1 = sum(m);
+    @show masstransfer!(f, c, ϵ, m, states);
+    println("dm -> ", sum(m) - im1);
 
     # stream
+    println("Streaming...");
     stream!(f, c, states);
 
+    println("Reconstructing DFs...");
     # reconstruct DFs from empty cells
     reconstruct_from_empty!(f, w, c, u, ϵ, states, ρ_A);
 
@@ -516,15 +546,19 @@ function _main()
     reconstruct_from_normal!(f, w, c, u, ϵ, states, ρ_A);
 
     # perform collision
+    println("Performing collisions...");
     collide!(f, w, c, ρ, u, ω, ϵ, states, g);
 
     # boundary conditions
+    println("Enforcing boundary conditions...");
     boundary_conditions!(f, states);
 
     # calculate macroscopic variables
+    println("Calculating macroscopic variables...");
     map_to_macro!(f, c, ρ, u);
 
     # update fluid fraction
+    println("Updating fluid fractions...");
     elst, flst = update_fluid_fraction!(ρ, ϵ, m, states, κ);
 
     # update cell states
@@ -532,16 +566,28 @@ function _main()
       update_cell_states!(f, c, w, ρ, u, ϵ, m, states, elst, flst),
       "update cell states",
       m);=#
+    println("Updating cell states...");
+    im2 = sum(m);
     update_cell_states!(f, c, w, ρ, u, ϵ, m, states, elst, flst);
+    println("dm -> ", sum(m) - im2);
 
-    # process
-    if step % 25 == 0
-      clf();
-      cs = contourf(transpose(m), levels=[0.0, 0.25, 0.5, 0.75, 1.0]);
-      colorbar(cs);
-      draw();
-      pause(0.001);
+    println("Testing conditions...");
+    for j=1:nj, i=1:ni
+      if states[i, j] == FLUID
+        @assert(ϵ[i, j] == 1.0, 
+                "Fluid fraction should be 1.0 at fluid cells ($i, $j)");
+        @assert(m[i, j] == ρ[i, j], 
+                "Mass should equal density at fluid cells ($i, $j)");
+      elseif states[i, j] == INTERFACE
+        @assert(ϵ[i, j] == m[i, j] / ρ[i, j], 
+                "Fluid fraction should be mass over ρ at interface cells ($i, $j)");
+      end
     end
+
+    println("End step.");
+    @show sum(m) - init_mass;
+    println("ENTER to continue."); readline(STDIN);
+    println();
   end
 
 end
