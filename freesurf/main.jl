@@ -132,12 +132,32 @@ function masstransfer!(f::Array{Float64, 3}, c::Matrix{Int64},
 
       end # for each neighbor
     else
-      dm[k, i, j] = 0.0;
+      dm[:, i, j] = 0.0;
     end # only transfer mass across interface cells
   end # for each node
 
-  return dm; # THIS SHOULD BE ZERO
+  for j=1:nj, i=1:ni, k=1:nk
+    const i_nbr   =   i + c[1,k];
+    const j_nbr   =   j + c[2,k];
 
+
+    if (i_nbr < 1 || i_nbr > ni || j_nbr < 1 || j_nbr > nj ||
+        states[i_nbr, j_nbr] == GAS) # if out of bounds or at a gas cell
+      @assert(dm[k, i, j] == 0.0, 
+              "Should not be transfering mass out of bounds/into gas");
+      continue;
+    end
+
+    @assert(dm[k, i, j] == -dm[_opp_k(k), i_nbr, j_nbr], 
+            "Changes in mass should be symmetrical, " * 
+            "($k, $i, $j) != -($(_opp_k(k)), $i_nbr, $j_nbr) => " *
+            "$(dm[k, i, j]) != $(-dm[_opp_k(k), i_nbr, j_nbr])"   *
+            "($i, $j) is $(states[i, j]) with ϵ = $(ϵ[i, j]), "   *
+            "($i_nbr, $j_nbr) is $(states[i_nbr, j_nbr]) with "   *
+            "ϵ = $(ϵ[i_nbr, j_nbr])");
+  end
+
+  @assert(sum(dm) == 0.0, "Mass should be conserved");
 end
 
 # stream particle distribution functions
@@ -531,7 +551,7 @@ function _main()
       m);=#
     println("Transfering mass...");
     im1 = sum(m);
-    @show masstransfer!(f, c, ϵ, m, states);
+    masstransfer!(f, c, ϵ, m, states);
     println("dm -> ", sum(m) - im1);
 
     # stream
@@ -572,7 +592,7 @@ function _main()
     println("dm -> ", sum(m) - im2);
 
     println("Testing conditions...");
-    for j=1:nj, i=1:ni
+    for j=1:ny, i=1:nx
       if states[i, j] == FLUID
         @assert(ϵ[i, j] == 1.0, 
                 "Fluid fraction should be 1.0 at fluid cells ($i, $j)");
