@@ -119,12 +119,10 @@ function masstransfer!(f::Array{Float64, 3}, c::Matrix{Int64},
 
         const opp_k   =   _opp_k(k);
 
-        if ((states[i, j] == FLUID && states[i_nbr, j_nbr] == FLUID)      ||
-            (states[i, j] == FLUID && states[i_nbr, j_nbr] == INTERFACE)  ||
-            (states[i, j] == INTERFACE && states[i_nbr, j_nbr] == FLUID))
+        if states[i_nbr, j_nbr]     ==  FLUID
           dm[k, i, j]      =  f[opp_k, i_nbr, j_nbr] - f[k, i, j];
           m[i,j]          +=  dm[k, i, j];
-        elseif states[i, j] == INTERFACE && states[i_nbr, j_nbr] == INTERFACE
+        elseif states[i_nbr, j_nbr] ==  INTERFACE
           dm[k, i, j]      =  (0.5 * (ϵ[i_nbr, j_nbr] + ϵ[i, j]) * 
                                (f[opp_k, i_nbr, j_nbr] - f[k, i, j]));
           m[i, j]         +=  dm[k, i, j];
@@ -150,7 +148,7 @@ function masstransfer!(f::Array{Float64, 3}, c::Matrix{Int64},
       continue;
     end
 
-    @assert(abs(dm[k, i, j] + dm[_opp_k(k), i_nbr, j_nbr]) < 1e-12, 
+    @assert(dm[k, i, j] == -dm[_opp_k(k), i_nbr, j_nbr], 
             "Changes in mass should be symmetrical, " * 
             "($k, $i, $j) != -($(_opp_k(k)), $i_nbr, $j_nbr) => " *
             "$(dm[k, i, j]) != $(-dm[_opp_k(k), i_nbr, j_nbr])"   *
@@ -159,7 +157,7 @@ function masstransfer!(f::Array{Float64, 3}, c::Matrix{Int64},
             "ϵ = $(ϵ[i_nbr, j_nbr])");
   end
 
-  @assert(abs(sum(dm)) < 1e-9, "Mass should be conserved");
+  @assert(sum(dm) == 0.0, "Mass should be conserved");
 end
 
 # stream particle distribution functions
@@ -169,20 +167,20 @@ function stream!(f::Array{Float64, 3}, c::Matrix{Int64}, states::Matrix{State})
 
   f_new         =   copy(f);
   
-  for j=1:nj, i=1:ni
-    if states[i, j] != GAS
-      for k=1:nk-1
-        const i_nbr   =   i + c[1,k];
-        const j_nbr   =   j + c[2,k];
+  for j=1:nj, i=1:ni, k=1:nk-1
 
-        if (i_nbr < 1 || i_nbr > ni || j_nbr < 1 || j_nbr > nj ||
-            states[i_nbr, j_nbr] == GAS) # if out of bounds or at a gas cell
-          continue;
-        end
+    if states[i, j] == GAS; continue; end
 
-        f_new[k, i_nbr, j_nbr] = f[k, i, j];
-      end
+    const i_nbr   =   i + c[1,k];
+    const j_nbr   =   j + c[2,k];
+
+    if (i_nbr < 1 || i_nbr > ni || j_nbr < 1 || j_nbr > nj ||
+        states[i_nbr, j_nbr] == GAS) # if out of bounds or at a gas cell
+      continue;
     end
+
+    f_new[k, i_nbr, j_nbr] = f[k, i, j];
+
   end
 
   copy!(f, f_new);
@@ -271,60 +269,38 @@ function collide!(f::Array{Float64, 3}, w::Vector{Float64}, c::Matrix{Int64},
 end
 
 #! Enforce boundary conditions
-function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State},
-                              m::Matrix{Float64})
+function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State})
   const ni, nj  = size(states);
 
   for i=1:ni
     if states[i, 1]   != GAS
       # south wall
-      for (k1, k2) in zip((2, 5, 6),(4, 7, 8))
-        m0 = m[i, 1];
-        m[i, 1]      +=   f[k2, i, 1] - f[k1, i, 1];
-        #@show m0, m[i, 1], f[k2, i, 1] - f[k1, i, 1], m[i, 1] - m0 - (f[k2, i, 1] - f[k1, i, 1]);
-        @assert(abs(m[i, 1] - m0 - (f[k2, i, 1] - f[k1, i, 1])) < 1e-13, 
-                "Bounceback boundary condition needs to conserve mass! " *
-                "dm($k1 => $k2, $i, 1) = $(m[i, 1] - m0 - (f[k2, i, 1] - f[k1, i, 1]))");
-        f[k1, i, 1]   =   f[k2, i, 1];
-      end
+      f[2, i, 1]    =   f[4, i, 1]; 
+      f[5, i, 1]    =   f[7, i, 1]; 
+      f[6, i, 1]    =   f[8, i, 1];
     end
 
     if states[i, nj]  != GAS
       # north wall
-      for (k1, k2) in zip((4, 7, 8),(2, 5, 6)) 
-        m0 = m[i, nj];
-        m[i, nj]      +=   f[k2, i, nj] - f[k1, i, nj];
-        @assert(abs(m[i, nj] - m0 - (f[k2, i, nj] - f[k1, i, nj])) < 1e-13, 
-                "Bounceback boundary condition needs to conserve mass! " *
-                "dm($k1 => $k2, $i, $nj) = $(m[i, nj] - m0 - (f[k2, i, nj] - f[k1, i, nj]))");
-        f[k1, i, nj]   =   f[k2, i, nj];
-      end
+      f[4, i, nj]   =   f[2, i, nj];
+      f[7, i, nj]   =   f[5, i, nj];
+      f[8, i, nj]   =   f[6, i, nj];
     end
   end
 
-  for j=1:nj
+  for j=1:nj-1
     if states[1, j]   != GAS 
       # west wall
-      for (k1, k2) in zip((1, 5, 8),(3, 7, 6)) 
-        m0 = m[1, j];
-        m[1, j]      +=   f[k2, 1, j] - f[k1, 1, j];
-        @assert(abs(m[1, j] - m0 - (f[k2, 1, j] - f[k1, 1, j])) < 1e-13, 
-                "Bounceback boundary condition needs to conserve mass! " *
-                "dm($k1 => $k2, 1, $j) = $(m[1, j] - m0 - (f[k2, 1, j] - f[k1, 1, j]))");
-        f[k1, 1, j]   =   f[k2, 1, j];
-      end
+      f[1, 1, j]    =   f[3, 1, j]; 
+      f[5, 1, j]    =   f[7, 1, j]; 
+      f[8, 1, j]    =   f[6, 1, j]; 
     end
 
     if states[ni, j]  != GAS
       # north wall
-      for (k1, k2) in zip((3, 7, 6),(1, 5, 8)) 
-        m0 = m[ni, j];
-        m[ni, j]      +=   f[k2, ni, j] - f[k1, ni, j];
-        @assert(abs(m[ni, j] - m0 - (f[k2, ni, j] - f[k1, ni, j])) < 1e-13, 
-                "Bounceback boundary condition needs to conserve mass! " *
-                "dm($k1 => $k2, $ni, $j) = $(m[ni, j] - m0 - (f[k2, ni, j] - f[k1, ni, j]))");
-        f[k1, ni, j]   =   f[k2, ni, j];
-      end
+      f[3, ni, j]    =   f[1, ni, j]; 
+      f[7, ni, j]    =   f[5, ni, j]; 
+      f[6, ni, j]    =   f[8, ni, j]; 
     end
   end
 end
@@ -339,7 +315,7 @@ function update_fluid_fraction!(ρ::Matrix{Float64}, ϵ::Matrix{Float64},
   
   for j=1:nj, i=1:ni
     if states[i, j] != INTERFACE; continue; end
-    ϵ[i, j] = m[i, j] / ρ[i, j];
+    ϵ[i, j] = ρ[i, j] / m[i, j];
 
     if      m[i, j] > (1 + κ) * ρ[i, j]
       push!(new_fluid_cells, (i, j));
@@ -561,7 +537,7 @@ function _main()
     # process
     if step % 1 == 0
       clf();
-      cs = contourf(transpose(m), levels=[0.0, 0.25, 0.5, 0.75, 1.0, 1.25]);
+      cs = contourf(transpose(m), levels=[0.0, 0.25, 0.5, 0.75, 1.0]);
       colorbar(cs);
       draw();
       pause(0.001);
@@ -576,132 +552,50 @@ function _main()
     println("Transfering mass...");
     im1 = sum(m);
     @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
     masstransfer!(f, c, ϵ, m, states);
     map_to_macro!(f, c, ρ, u);
     @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
-    if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
-    else
-      warn("dm -> $(sum(m) - im1)");
-    end
+    println("dm -> ", sum(m) - im1);
 
     # stream
     println("Streaming...");
-    im1 = sum(m);
     stream!(f, c, states);
     map_to_macro!(f, c, ρ, u);
     @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
-    if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
-    else
-      warn("dm -> $(sum(m) - im1)");
-    end
 
     println("Reconstructing DFs...");
-    im1 = sum(m);
     # reconstruct DFs from empty cells
     reconstruct_from_empty!(f, w, c, u, ϵ, states, ρ_A);
     map_to_macro!(f, c, ρ, u);
     @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
-    if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
-    else
-      warn("dm -> $(sum(m) - im1)");
-    end
 
     # reconstruct DFs along interface normal
     reconstruct_from_normal!(f, w, c, u, ϵ, states, ρ_A);
-    im1 = sum(m);
     map_to_macro!(f, c, ρ, u);
     @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
-    if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
-    else
-      warn("dm -> $(sum(m) - im1)");
-    end
 
     # perform collision
     println("Performing collisions...");
-    im1 = sum(m);
     collide!(f, w, c, ρ, u, ω, ϵ, states, g);
     map_to_macro!(f, c, ρ, u);
     @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
-    if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
-    else
-      warn("dm -> $(sum(m) - im1)");
-    end
 
     # boundary conditions
     println("Enforcing boundary conditions...");
-    im1 = sum(m);
-    boundary_conditions!(f, states, m);
+    boundary_conditions!(f, states);
     map_to_macro!(f, c, ρ, u);
     @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
-    if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
-    else
-      warn("dm -> $(sum(m) - im1)");
-    end
 
     # calculate macroscopic variables
     println("Calculating macroscopic variables...");
-    im1 = sum(m);
     map_to_macro!(f, c, ρ, u);
     @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
-    if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
-    else
-      warn("dm -> $(sum(m) - im1)");
-    end
 
     # update fluid fraction
     println("Updating fluid fractions...");
-    im1 = sum(m);
     elst, flst = update_fluid_fraction!(ρ, ϵ, m, states, κ);
     map_to_macro!(f, c, ρ, u);
     @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
-    if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
-    else
-      warn("dm -> $(sum(m) - im1)");
-    end
 
     # update cell states
     #=@debug_mass_cons(
@@ -713,15 +607,7 @@ function _main()
     update_cell_states!(f, c, w, ρ, u, ϵ, m, states, elst, flst);
     map_to_macro!(f, c, ρ, u);
     @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
-    if abs(sum(m) - im2) < 1e-13
-      println("dm -> ", sum(m) - im2);
-    else
-      warn("dm -> $(sum(m) - im2)");
-    end
+    println("dm -> ", sum(m) - im2);
 
     println("Testing conditions...");
     for j=1:ny, i=1:nx
@@ -729,7 +615,7 @@ function _main()
         @assert(ϵ[i, j] == 1.0, 
                 "Fluid fraction should be 1.0 at fluid cells ($i, $j). " *
                 "ϵ($i, $j) != 1.0; $(ϵ[i, j]) != 1.0.");
-        @assert(abs(m[i, j] - ρ[i, j]) < 1e-9, 
+        @assert(m[i, j] == ρ[i, j], 
                 "Mass should equal density at fluid cells ($i, $j). "    *
                 "m($i, $j) != ρ($i, $j); $(m[i, j]) != $(ρ[i, j]).");
       elseif states[i, j] == INTERFACE
