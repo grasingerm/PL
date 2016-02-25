@@ -487,8 +487,8 @@ end
 function _main()
   reset_logging_to_default();
 
-  const   nx::UInt      =     32;
-  const   ny::UInt      =     32;
+  const   nx::UInt      =     64;
+  const   ny::UInt      =     64;
 
   const   nu            =     0.2;                # viscosity
   const   ω             =     1.0 / (nu + 0.5);   # collision frequency

@@ -1,5 +1,4 @@
 using PyPlot;
-PyPlot.ion();
 using List;
 using Logging;
 
@@ -527,13 +526,13 @@ function _main()
     init_mass   =   sum(m);
 
     # process
-    if step % 1000 == 0
+    if step % 250 == 0
       clf();
       cs = contourf(transpose(m), levels=[-0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25]);
       colorbar(cs);
-      draw();
-      savefig(joinpath("figs-16","mass_step-$step.png"));
-      pause(0.001);
+      #draw();
+      savefig(joinpath("//", "run", "media", "clementine", "4123031432", "freesurf", "figs-16",@sprintf("mass_step-%09d.png", step)));
+      #pause(0.001);
       println("step: ", step);
     end
     

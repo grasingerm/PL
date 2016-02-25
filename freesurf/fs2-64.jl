@@ -487,14 +487,14 @@ end
 function _main()
   reset_logging_to_default();
 
-  const   nx::UInt      =     32;
-  const   ny::UInt      =     32;
+  const   nx::UInt      =     64;
+  const   ny::UInt      =     64;
 
   const   nu            =     0.2;                # viscosity
   const   ω             =     1.0 / (nu + 0.5);   # collision frequency
   const   ρ_0           =     1.0;                # reference density
   const   ρ_A           =     1.0;                # atmosphere pressure
-  const   g             =     [0.0; -1.0e-6];     # gravitation acceleration
+  const   g             =     [0.0; -1.0e-5];     # gravitation acceleration
 
   const   κ             =     1.0e-3;             # state change (mass) offset
   
