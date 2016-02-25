@@ -487,14 +487,14 @@ end
 function _main()
   reset_logging_to_default();
 
-  const   nx::UInt      =     16;
-  const   ny::UInt      =     16;
+  const   nx::UInt      =     32;
+  const   ny::UInt      =     32;
 
   const   nu            =     0.2;                # viscosity
   const   ω             =     1.0 / (nu + 0.5);   # collision frequency
   const   ρ_0           =     1.0;                # reference density
   const   ρ_A           =     1.0;                # atmosphere pressure
-  const   g             =     [0.0; -1.0e-5];     # gravitation acceleration
+  const   g             =     [0.0; -1.0e-6];     # gravitation acceleration
 
   const   κ             =     1.0e-3;             # state change (mass) offset
   
@@ -531,7 +531,7 @@ function _main()
       cs = contourf(transpose(m), levels=[-0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25]);
       colorbar(cs);
       #draw();
-      savefig(joinpath("//", "run", "media", "clementine", "4123031432", "freesurf", "figs-32",@sprintf("mass_step-%09d.png", step)));
+      savefig(joinpath("figs-32", @sprintf("mass_step-%09d.png", step)));
       #pause(0.001);
       println("step: ", step);
     end

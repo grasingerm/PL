@@ -487,8 +487,8 @@ end
 function _main()
   reset_logging_to_default();
 
-  const   nx::UInt      =     32;
-  const   ny::UInt      =     32;
+  const   nx::UInt      =     16;
+  const   ny::UInt      =     16;
 
   const   nu            =     0.2;                # viscosity
   const   ω             =     1.0 / (nu + 0.5);   # collision frequency
@@ -531,7 +531,7 @@ function _main()
       cs = contourf(transpose(m), levels=[-0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25]);
       colorbar(cs);
       #draw();
-      savefig(joinpath("//", "run", "media", "clementine", "4123031432", "freesurf", "figs-32",@sprintf("mass_step-%09d.png", step)));
+      savefig(joinpath("figs2-16", @sprintf("mass_step-%09d.png", step)));
       #pause(0.001);
       println("step: ", step);
     end

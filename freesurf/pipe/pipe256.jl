@@ -1,4 +1,5 @@
 using PyPlot;
+PyPlot.ion();
 using List;
 using Logging;
 
@@ -45,8 +46,8 @@ end
 # Initialize simulation variables
 function init!(f, c, w, ρ, u, m, ϵ, states, ρ_0; fill_x::Real=0.5, fill_y=1.0)
   const ni, nj  =   size(ρ);
-  const fill_ni =   convert(Int, fill_x * ni);
-  const fill_nj =   convert(Int, fill_y * nj);
+  const fill_ni =   convert(Int, round(fill_x * ni));
+  const fill_nj =   convert(Int, round(fill_y * nj));
   const nk      =   length(w);
 
   for j=1:nj, i=1:ni, k=1:nk
@@ -276,7 +277,7 @@ end
 
 #! Enforce boundary conditions
 function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State},
-                              m::Matrix{Float64})
+                              m::Matrix{Float64}, u0::Real=0.01, rho_out=1.0)
   const ni, nj  = size(states);
 
   for i=1:ni
@@ -297,18 +298,27 @@ function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State},
 
   for j=1:nj
     if states[1, j]   != GAS 
-      # west wall
-      for (k1, k2) in zip((1, 5, 8),(3, 7, 6)) 
-        m0 = m[1, j];
-        f[k1, 1, j]   =   f[k2, 1, j];
-      end
+      # west inlet
+      rhow = (f[9,1,j] + f[2,1,j] + f[4,1,j] +
+              2.0 * (f[3,1,j] + f[6,1,j] + f[7,1,j])) / (1.0 - u0);
+      f[1,1,j] = f[3,1,j] + 2.0 * rhow * u0 / 3.0;
+      second_term = rhow * u0 / 6.0;
+      third_term = 0.5 * (f[2,1,j] - f[4,1,j]);
+      f[5,1,j] = f[7,1,j] + second_term - third_term;
+      f[8,1,j] = f[6,1,j] + second_term + third_term;
     end
 
     if states[ni, j]  != GAS
       # north wall
-      for (k1, k2) in zip((3, 7, 6),(1, 5, 8)) 
-        f[k1, ni, j]   =   f[k2, ni, j];
-      end
+      u_x = (f[9,ni,j] + f[2,ni,j] + f[4,ni,j] +
+                2 * (f[1,ni,j] + f[5,ni,j] + f[8,ni,j])) / rho_out - 1;
+      f[3,ni,j] = f[1,ni,j] - 2/3 * rho_out * u_x;
+
+      second_term = 0.5 * (f[2,ni,j] - f[5,ni,j]);
+      third_term = 1/6 * rho_out * u_x;
+
+      f[7,ni,j] = f[5,ni,j] + second_term - third_term;
+      f[6,ni,j] = f[8,ni,j] - second_term - third_term;
     end
   end
 end
@@ -342,7 +352,7 @@ function update_cell_states!(f::Array{Float64, 3}, c::Matrix{Int64},
                              m::Matrix{Float64}, states::Matrix{State},
                              new_empty_cells::DoublyLinkedList{Tuple{Int, Int}},
                              new_fluid_cells::DoublyLinkedList{Tuple{Int, Int}})
-  #Logging.configure(level=DEBUG);
+  Logging.configure(level=DEBUG);
   const ni, nj  = size(states);
   const nk      = size(c, 2);
  
@@ -487,14 +497,14 @@ end
 function _main()
   reset_logging_to_default();
 
-  const   nx::UInt      =     32;
+  const   nx::UInt      =     256;
   const   ny::UInt      =     32;
 
   const   nu            =     0.2;                # viscosity
   const   ω             =     1.0 / (nu + 0.5);   # collision frequency
   const   ρ_0           =     1.0;                # reference density
   const   ρ_A           =     1.0;                # atmosphere pressure
-  const   g             =     [0.0; -1.0e-6];     # gravitation acceleration
+  const   g             =     [0.0; 0.0e-5];      # gravitation acceleration
 
   const   κ             =     1.0e-3;             # state change (mass) offset
   
@@ -515,7 +525,7 @@ function _main()
   states                =     Array{State, 2}(nx, ny);
   fill!(states, GAS);
 
-  init!(f, c, w, ρ, u, m, ϵ, states, ρ_0);
+  init!(f, c, w, ρ, u, m, ϵ, states, ρ_0; fill_x=0.1, fill_y=1.0);
   
   println("Initial mass: ", sum(m));
   println();
@@ -526,14 +536,16 @@ function _main()
     init_mass   =   sum(m);
 
     # process
-    if step % 250 == 0
+    if step % 1 == 0
       clf();
       cs = contourf(transpose(m), levels=[-0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25]);
       colorbar(cs);
-      #draw();
-      savefig(joinpath("//", "run", "media", "clementine", "4123031432", "freesurf", "figs-32",@sprintf("mass_step-%09d.png", step)));
-      #pause(0.001);
+      draw();
+      savefig(joinpath("figs-256", @sprintf("mass_step-%09d.png", step)));
+      pause(0.001);
       println("step: ", step);
+      println("ENTER to continue.");
+      readline(STDIN);
     end
     
     # mass transfer
