@@ -343,7 +343,7 @@ function update_cell_states!(f::Array{Float64, 3}, c::Matrix{Int64},
                              m::Matrix{Float64}, states::Matrix{State},
                              new_empty_cells::DoublyLinkedList{Tuple{Int, Int}},
                              new_fluid_cells::DoublyLinkedList{Tuple{Int, Int}})
-  Logging.configure(level=DEBUG);
+  #Logging.configure(level=DEBUG);
   const ni, nj  = size(states);
   const nk      = size(c, 2);
  
@@ -488,8 +488,8 @@ end
 function _main()
   reset_logging_to_default();
 
-  const   nx::UInt      =     16;
-  const   ny::UInt      =     16;
+  const   nx::UInt      =     32;
+  const   ny::UInt      =     32;
 
   const   nu            =     0.2;                # viscosity
   const   ω             =     1.0 / (nu + 0.5);   # collision frequency
@@ -499,7 +499,7 @@ function _main()
 
   const   κ             =     1.0e-3;             # state change (mass) offset
   
-  const   nsteps::UInt  =     1000000;
+  const   nsteps::UInt  =     10000000;
 
   const   c             =     (Int64[1 0; 0 1; -1 0; 0 -1; 1 1; -1 1; -1 -1; 
                                      1 -1; 0 0]');
@@ -527,12 +527,12 @@ function _main()
     init_mass   =   sum(m);
 
     # process
-    if step % 250 == 0
+    if step % 1000 == 0
       clf();
       cs = contourf(transpose(m), levels=[-0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25]);
       colorbar(cs);
       draw();
-      savefig(joinpath("figs","mass_step-$step.png"));
+      savefig(joinpath("figs-32","mass_step-$step.png"));
       pause(0.001);
       println("step: ", step);
     end
