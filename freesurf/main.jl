@@ -486,18 +486,20 @@ end
 
 # Main function
 function _main()
-  const   nx::UInt      =     256;
-  const   ny::UInt      =     256;
+  reset_logging_to_default();
+
+  const   nx::UInt      =     16;
+  const   ny::UInt      =     16;
 
   const   nu            =     0.2;                # viscosity
   const   ω             =     1.0 / (nu + 0.5);   # collision frequency
   const   ρ_0           =     1.0;                # reference density
   const   ρ_A           =     1.0;                # atmosphere pressure
-  const   g             =     [0.0; -1.0e-2];     # gravitation acceleration
+  const   g             =     [0.0; -1.0e-6];     # gravitation acceleration
 
   const   κ             =     1.0e-3;             # state change (mass) offset
   
-  const   nsteps::UInt  =     40000;
+  const   nsteps::UInt  =     1000000;
 
   const   c             =     (Int64[1 0; 0 1; -1 0; 0 -1; 1 1; -1 1; -1 -1; 
                                      1 -1; 0 0]');
@@ -521,38 +523,25 @@ function _main()
   println("Starting simulation...");
 
   # iterate through time steps
-  for step=1:nsteps
+  for step=0:nsteps # start at zero so we can have a figure of the initial conditions
     init_mass   =   sum(m);
 
     # process
-    if step % 1 == 0
+    if step % 250 == 0
       clf();
-      cs = contourf(transpose(m), levels=[0.0, 0.25, 0.5, 0.75, 1.0, 1.25]);
+      cs = contourf(transpose(m), levels=[-0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25]);
       colorbar(cs);
       draw();
+      savefig(joinpath("figs","mass_step-$step.png"));
       pause(0.001);
       println("step: ", step);
     end
-
+    
     # mass transfer
-    #=@debug_mass_cons(
-      @show masstransfer!(f, c, ϵ, m, states),
-      "mass transfer",
-      m);=#
     println("Transfering mass...");
     im1 = sum(m);
-    @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
     masstransfer!(f, c, ϵ, m, states);
     map_to_macro!(f, c, ρ, u);
-    @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
       println("dm -> ", sum(m) - im1);
     else
@@ -564,11 +553,6 @@ function _main()
     im1 = sum(m);
     stream!(f, c, states);
     map_to_macro!(f, c, ρ, u);
-    @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
       debug("dm -> ", sum(m) - im1);
     else
@@ -580,11 +564,6 @@ function _main()
     # reconstruct DFs from empty cells
     reconstruct_from_empty!(f, w, c, u, ϵ, states, ρ_A);
     map_to_macro!(f, c, ρ, u);
-    @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
       debug("dm -> ", sum(m) - im1);
     else
@@ -595,11 +574,6 @@ function _main()
     reconstruct_from_normal!(f, w, c, u, ϵ, states, ρ_A);
     im1 = sum(m);
     map_to_macro!(f, c, ρ, u);
-    @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
       debug("dm -> ", sum(m) - im1);
     else
@@ -611,11 +585,6 @@ function _main()
     im1 = sum(m);
     collide!(f, w, c, ρ, u, ω, ϵ, states, g);
     map_to_macro!(f, c, ρ, u);
-    @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
       debug("dm -> ", sum(m) - im1);
     else
@@ -627,11 +596,6 @@ function _main()
     im1 = sum(m);
     boundary_conditions!(f, states, m);
     map_to_macro!(f, c, ρ, u);
-    @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
       debug("dm -> ", sum(m) - im1);
     else
@@ -642,11 +606,6 @@ function _main()
     println("Calculating macroscopic variables...");
     im1 = sum(m);
     map_to_macro!(f, c, ρ, u);
-    @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
       debug("dm -> ", sum(m) - im1);
     else
@@ -658,11 +617,6 @@ function _main()
     im1 = sum(m);
     elst, flst = update_fluid_fraction!(ρ, ϵ, m, states, κ);
     map_to_macro!(f, c, ρ, u);
-    @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
       debug("dm -> ", sum(m) - im1);
     else
@@ -678,11 +632,6 @@ function _main()
     im2 = sum(m);
     update_cell_states!(f, c, w, ρ, u, ϵ, m, states, elst, flst);
     map_to_macro!(f, c, ρ, u);
-    @show m[1, 1], ρ[1, 1];
-    @show m[129, 1], ρ[129, 1];
-    @show ϵ[129, 1], m[129, 1] / ρ[129, 1];
-    @show states[128, 1];
-    @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im2) < 1e-13
       debug("dm -> ", sum(m) - im2);
     else
@@ -708,7 +657,6 @@ function _main()
 
     println("End step.");
     @show sum(m) - init_mass;
-    println("ENTER to continue."); readline(STDIN);
     println();
   end
 
