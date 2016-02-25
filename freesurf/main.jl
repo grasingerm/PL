@@ -1,6 +1,7 @@
 using PyPlot;
 PyPlot.ion();
 using List;
+using Logging;
 
 immutable Gas; end;          const GAS         = Gas();
 immutable Fluid; end;        const FLUID       = Fluid();
@@ -14,6 +15,10 @@ macro debug_mass_cons(code, opname, m)
     $code;
     println("Change in mass for ", $opname, ": ", sum($m) - init_mass);
   end;
+end
+
+function reset_logging_to_default()
+  Logging.configure(level=WARNING);
 end
 
 # Map particle distribution functions to macroscopic variables
@@ -279,12 +284,6 @@ function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State},
     if states[i, 1]   != GAS
       # south wall
       for (k1, k2) in zip((2, 5, 6),(4, 7, 8))
-        m0 = m[i, 1];
-        m[i, 1]      +=   f[k2, i, 1] - f[k1, i, 1];
-        #@show m0, m[i, 1], f[k2, i, 1] - f[k1, i, 1], m[i, 1] - m0 - (f[k2, i, 1] - f[k1, i, 1]);
-        @assert(abs(m[i, 1] - m0 - (f[k2, i, 1] - f[k1, i, 1])) < 1e-13, 
-                "Bounceback boundary condition needs to conserve mass! " *
-                "dm($k1 => $k2, $i, 1) = $(m[i, 1] - m0 - (f[k2, i, 1] - f[k1, i, 1]))");
         f[k1, i, 1]   =   f[k2, i, 1];
       end
     end
@@ -292,11 +291,6 @@ function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State},
     if states[i, nj]  != GAS
       # north wall
       for (k1, k2) in zip((4, 7, 8),(2, 5, 6)) 
-        m0 = m[i, nj];
-        m[i, nj]      +=   f[k2, i, nj] - f[k1, i, nj];
-        @assert(abs(m[i, nj] - m0 - (f[k2, i, nj] - f[k1, i, nj])) < 1e-13, 
-                "Bounceback boundary condition needs to conserve mass! " *
-                "dm($k1 => $k2, $i, $nj) = $(m[i, nj] - m0 - (f[k2, i, nj] - f[k1, i, nj]))");
         f[k1, i, nj]   =   f[k2, i, nj];
       end
     end
@@ -307,10 +301,6 @@ function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State},
       # west wall
       for (k1, k2) in zip((1, 5, 8),(3, 7, 6)) 
         m0 = m[1, j];
-        m[1, j]      +=   f[k2, 1, j] - f[k1, 1, j];
-        @assert(abs(m[1, j] - m0 - (f[k2, 1, j] - f[k1, 1, j])) < 1e-13, 
-                "Bounceback boundary condition needs to conserve mass! " *
-                "dm($k1 => $k2, 1, $j) = $(m[1, j] - m0 - (f[k2, 1, j] - f[k1, 1, j]))");
         f[k1, 1, j]   =   f[k2, 1, j];
       end
     end
@@ -318,11 +308,6 @@ function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State},
     if states[ni, j]  != GAS
       # north wall
       for (k1, k2) in zip((3, 7, 6),(1, 5, 8)) 
-        m0 = m[ni, j];
-        m[ni, j]      +=   f[k2, ni, j] - f[k1, ni, j];
-        @assert(abs(m[ni, j] - m0 - (f[k2, ni, j] - f[k1, ni, j])) < 1e-13, 
-                "Bounceback boundary condition needs to conserve mass! " *
-                "dm($k1 => $k2, $ni, $j) = $(m[ni, j] - m0 - (f[k2, ni, j] - f[k1, ni, j]))");
         f[k1, ni, j]   =   f[k2, ni, j];
       end
     end
@@ -358,12 +343,14 @@ function update_cell_states!(f::Array{Float64, 3}, c::Matrix{Int64},
                              m::Matrix{Float64}, states::Matrix{State},
                              new_empty_cells::DoublyLinkedList{Tuple{Int, Int}},
                              new_fluid_cells::DoublyLinkedList{Tuple{Int, Int}})
-
+  Logging.configure(level=DEBUG);
   const ni, nj  = size(states);
   const nk      = size(c, 2);
-  
+ 
+  debug("Preparing neighborhood of all cells flagged for fluidizing");
   for node in new_fluid_cells # First the neighborhood of all filled cells are prepared
     const i, j      =     node.val;
+    debug("Converting state($i, $j) = $(states[i, j]) -> $(FLUID)");
     states[i, j]    =     FLUID;
 
     # Calculate the total density and velocity of the neighborhood
@@ -386,9 +373,7 @@ function update_cell_states!(f::Array{Float64, 3}, c::Matrix{Int64},
     end
     ρ_avg           =       ρ_sum / counter;
     u_avg           =       u_sum / counter;
-
-    cells_to_redist_to  =   DoublyLinkedList{Tuple{Int, Int}}();
-    counter             =   0;
+    debug("ρ_avg = $(ρ_avg), u_avg = $u_avg, with $counter valid neighbors");
 
     # Construct interface cells from neighborhood average at equilibrium
     for k=1:nk-1
@@ -399,64 +384,40 @@ function update_cell_states!(f::Array{Float64, 3}, c::Matrix{Int64},
         continue;
       end
 
-      if states[i_nbr, j_nbr] == FLUID
-        push!(cells_to_redist_to, (i_nbr, j_nbr));
-        counter +=  1;
-        continue;
-      end
-
       # If it is already an interface cell, make sure it is not emptied
       if states[i_nbr, j_nbr] == INTERFACE
+        debug("Checking to ensure ($i_nbr, $j_nbr) is not emptied.");
         remove!(new_empty_cells, (i_nbr, j_nbr));
-        push!(cells_to_redist_to, (i_nbr, j_nbr));
-        counter +=  1;
-      else
+      elseif states[i_nbr, j_nbr] == GAS
+        debug("Converting state($i_nbr, $j_nbr) = $(states[i_nbr, j_nbr]) -> $(INTERFACE)");
         states[i_nbr, j_nbr] = INTERFACE;
         for kk=1:nk
           f[kk, i_nbr, j_nbr]   =   feq(ρ_avg, w[kk], c[:, kk], u_avg);
         end
-        push!(cells_to_redist_to, (i_nbr, j_nbr));
-        counter +=  1;
       end
     end # end reflag neighbors loop
-
-    # redistribute mass amoung valid neighbors
-    const mex = m[i, j] - ρ[i, j];
-    for node in cells_to_redist_to
-      const ii, jj      =   node.val;
-      m[ii, jj]        +=   mex; 
-    end
-    m[i, j]   = ρ[i, j]; # set mass to local ρ
   end
 
+  debug("Convert emptied cells to gas cells");
   for node in new_empty_cells # convert emptied cells to gas cells
     const i, j      =     node.val;
+    debug("Converting state($i, $j) = $(states[i, j]) -> $(GAS)");
     states[i, j]    =     GAS;
 
-    cells_to_redist_to  =   DoublyLinkedList{Tuple{Int, Int}}();
-    counter::UInt       =   0;
     for k=1:nk-1
       const i_nbr     =     i + c[1, k];
       const j_nbr     =     j + c[2, k];
 
       if (i_nbr >= 1 && i_nbr <= ni && j_nbr >= 1 && j_nbr <= nj &&
           states[i_nbr, j_nbr] == FLUID)
+        debug("Converting state($i_nbr, $j_nbr) = $(states[i_nbr, j_nbr]) -> $(INTERFACE)");
         states[i_nbr, j_nbr] =  INTERFACE;
-        counter             +=  1;
-        push!(cells_to_redist_to, (i_nbr, j_nbr));
       end
     end
-
-    for nodenode in cells_to_redist_to # redistribute excess mass
-      const ii, jj  =   nodenode.val;
-      m[ii, jj]    +=   m[i, j] / counter;
-    end
-
-    m[i, j]   =   0.0;
-    ϵ[i, j]   =   0.0;
   end
 
   # Redistribute excess mass
+  debug("Redistribute excess mass from filled cells");
   for node in new_fluid_cells # Redistribute excess mass from new fluid cells
     const i, j      =     node.val;
     
@@ -479,6 +440,7 @@ function update_cell_states!(f::Array{Float64, 3}, c::Matrix{Int64},
     const mex = m[i, j] - ρ[i, j];
     for node in cells_to_redist_to
       const ii, jj      =   node.val;
+      debug("Redistributing mass from ($i, $j) -> ($ii, $jj)");
       m[ii, jj]        +=   mex; 
       ϵ[ii, jj]         =   m[ii, jj] / ρ[ii, jj];
     end
@@ -487,6 +449,7 @@ function update_cell_states!(f::Array{Float64, 3}, c::Matrix{Int64},
     ϵ[i, j]   = 1.0;
   end
 
+  debug("Redistribute excess mass from empty cells");
   for node in new_empty_cells # Redistribute excess mass from emptied cells
     const i, j      =     node.val;
     
@@ -509,6 +472,7 @@ function update_cell_states!(f::Array{Float64, 3}, c::Matrix{Int64},
     const mex = m[i, j];
     for node in cells_to_redist_to
       const ii, jj      =   node.val;
+      debug("Redistributing mass from ($i, $j) -> ($ii, $jj)");
       m[ii, jj]        +=   mex;
       ϵ[ii, jj]         =   m[ii, jj] / ρ[ii, jj];
     end
@@ -516,6 +480,8 @@ function update_cell_states!(f::Array{Float64, 3}, c::Matrix{Int64},
     m[i, j]   = 0.0;
     ϵ[i, j]   = 0.0;
   end
+
+  reset_logging_to_default();
 end
 
 # Main function
@@ -604,7 +570,7 @@ function _main()
     @show states[128, 1];
     @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
+      debug("dm -> ", sum(m) - im1);
     else
       warn("dm -> $(sum(m) - im1)");
     end
@@ -620,7 +586,7 @@ function _main()
     @show states[128, 1];
     @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
+      debug("dm -> ", sum(m) - im1);
     else
       warn("dm -> $(sum(m) - im1)");
     end
@@ -635,7 +601,7 @@ function _main()
     @show states[128, 1];
     @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
+      debug("dm -> ", sum(m) - im1);
     else
       warn("dm -> $(sum(m) - im1)");
     end
@@ -651,7 +617,7 @@ function _main()
     @show states[128, 1];
     @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
+      debug("dm -> ", sum(m) - im1);
     else
       warn("dm -> $(sum(m) - im1)");
     end
@@ -667,7 +633,7 @@ function _main()
     @show states[128, 1];
     @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
+      debug("dm -> ", sum(m) - im1);
     else
       warn("dm -> $(sum(m) - im1)");
     end
@@ -682,7 +648,7 @@ function _main()
     @show states[128, 1];
     @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
+      debug("dm -> ", sum(m) - im1);
     else
       warn("dm -> $(sum(m) - im1)");
     end
@@ -698,7 +664,7 @@ function _main()
     @show states[128, 1];
     @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im1) < 1e-13
-      println("dm -> ", sum(m) - im1);
+      debug("dm -> ", sum(m) - im1);
     else
       warn("dm -> $(sum(m) - im1)");
     end
@@ -718,13 +684,13 @@ function _main()
     @show states[128, 1];
     @show m[128, 1], ρ[128, 1];
     if abs(sum(m) - im2) < 1e-13
-      println("dm -> ", sum(m) - im2);
+      debug("dm -> ", sum(m) - im2);
     else
       warn("dm -> $(sum(m) - im2)");
     end
 
     println("Testing conditions...");
-    for j=1:ny, i=1:nx
+    #=for j=1:ny, i=1:nx
       if states[i, j] == FLUID
         @assert(ϵ[i, j] == 1.0, 
                 "Fluid fraction should be 1.0 at fluid cells ($i, $j). " *
@@ -738,7 +704,7 @@ function _main()
                 "ϵ($i, $j) != m($i, $j) / ρ($i, $j); " *
                 "$(ϵ[i, j]) != $(m[i, j]) / $(ρ[i, j]).");
       end
-    end
+    end=#
 
     println("End step.");
     @show sum(m) - init_mass;
