@@ -167,6 +167,13 @@ function masstransfer!(f::Array{Float64, 3}, c::Matrix{Int64},
   #@assert(abs(sum(dm)) < 1e-9, "Mass should be conserved");
 end
 
+const _SBOUNDS = transpose(Int[1   24  1   16;
+                               24  32  8   16;
+                               32  64  1   16]);
+const _CBOUNDS = transpose(Int[1   24  1   16;
+                               25  32  8   16;
+                               33  64  1   16]);
+
 # stream particle distribution functions
 function stream!(f::Array{Float64, 3}, c::Matrix{Int64}, states::Matrix{State})
   const ni, nj  =   size(states);
@@ -307,7 +314,7 @@ function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State},
 
     if states[ni, j]  != GAS
       # north wall
-      u_x = (f[9,ni,j] + f[2,ni,j] + f[4,ni,j] +
+      #=u_x = (f[9,ni,j] + f[2,ni,j] + f[4,ni,j] +
                 2 * (f[1,ni,j] + f[5,ni,j] + f[8,ni,j])) / rho_out - 1;
       f[3,ni,j] = f[1,ni,j] - 2/3 * rho_out * u_x;
 
@@ -315,7 +322,7 @@ function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State},
       third_term = 1/6 * rho_out * u_x;
 
       f[7,ni,j] = f[5,ni,j] + second_term - third_term;
-      f[6,ni,j] = f[8,ni,j] - second_term - third_term;
+      f[6,ni,j] = f[8,ni,j] - second_term - third_term;=#
     end
   end
 end
@@ -501,7 +508,7 @@ function _main()
   const   ω             =     1.0 / (nu + 0.5);   # collision frequency
   const   ρ_0           =     1.0;                # reference density
   const   ρ_A           =     1.0;                # atmosphere pressure
-  const   g             =     [1.0e-6; 0.0e-5];   # gravitation acceleration
+  const   g             =     [1.0e-6; 3.0e-6];   # gravitation acceleration
 
   const   κ             =     1.0e-3;             # state change (mass) offset
   
@@ -538,7 +545,7 @@ function _main()
       cs = contourf(transpose(m), levels=[-0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.50]);
       colorbar(cs);
       draw();
-      savefig(joinpath("figs-256", @sprintf("mass_step-%09d.png", step)));
+      savefig(joinpath("figs-64g", @sprintf("mass_step-%09d.png", step)));
       pause(0.001);
       println("step: ", step);
     end

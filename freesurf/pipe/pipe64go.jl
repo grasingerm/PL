@@ -21,6 +21,13 @@ function reset_logging_to_default()
   Logging.configure(level=WARNING);
 end
 
+const _SBOUNDS = transpose(Int[1   24  1   16;
+                               24  32  8   16;
+                               32  64  1   16]);
+const _CBOUNDS = transpose(Int[1   24  1   16;
+                               25  32  8   16;
+                               33  64  1   16]);
+
 # Map particle distribution functions to macroscopic variables
 function map_to_macro!(f::Array{Float64, 3}, c::Matrix{Int64}, 
                        ρ::Matrix{Float64}, u::Array{Float64, 3})
@@ -110,38 +117,41 @@ function masstransfer!(f::Array{Float64, 3}, c::Matrix{Int64},
 
   dm              =     zeros(nk, ni, nj);
 
-  for j=1:nj, i=1:ni
-    if states[i,j] != GAS
-      for k=1:nk-1
-        const i_nbr   =   i + c[1,k];
-        const j_nbr   =   j + c[2,k];
+  for r in size(_SBOUNDS, 2)
+    i_min, i_max, j_min, j_max = _SBOUNDS[:,r];
+    for j=1:nj, i=1:ni
+      if states[i,j] != GAS
+        for k=1:nk-1
+          const i_nbr   =   i + c[1,k];
+          const j_nbr   =   j + c[2,k];
 
-        if (i_nbr < 1 || i_nbr > ni || j_nbr < 1 || j_nbr > nj ||
-            states[i_nbr, j_nbr] == GAS) # if out of bounds or at a gas cell
-            dm[k, i, j] = 0.0;
-          continue;
-        end
+          if (i_nbr < i_min || i_nbr > i_max || j_nbr < j_min || j_nbr > j_max ||
+              states[i_nbr, j_nbr] == GAS) # if out of bounds or at a gas cell
+              dm[k, i, j] = 0.0;
+            continue;
+          end
 
-        const opp_k   =   _opp_k(k);
+          const opp_k   =   _opp_k(k);
 
-        if ((states[i, j] == FLUID && states[i_nbr, j_nbr] == FLUID)      ||
-            (states[i, j] == FLUID && states[i_nbr, j_nbr] == INTERFACE)  ||
-            (states[i, j] == INTERFACE && states[i_nbr, j_nbr] == FLUID))
-          dm[k, i, j]      =  f[opp_k, i_nbr, j_nbr] - f[k, i, j];
-          m[i,j]          +=  dm[k, i, j];
-        elseif states[i, j] == INTERFACE && states[i_nbr, j_nbr] == INTERFACE
-          dm[k, i, j]      =  (0.5 * (ϵ[i_nbr, j_nbr] + ϵ[i, j]) * 
-                               (f[opp_k, i_nbr, j_nbr] - f[k, i, j]));
-          m[i, j]         +=  dm[k, i, j];
-        else
-          error("State $(states[i_nbr, j_nbr]), not understood");
-        end
+          if ((states[i, j] == FLUID && states[i_nbr, j_nbr] == FLUID)      ||
+              (states[i, j] == FLUID && states[i_nbr, j_nbr] == INTERFACE)  ||
+              (states[i, j] == INTERFACE && states[i_nbr, j_nbr] == FLUID))
+            dm[k, i, j]      =  f[opp_k, i_nbr, j_nbr] - f[k, i, j];
+            m[i,j]          +=  dm[k, i, j];
+          elseif states[i, j] == INTERFACE && states[i_nbr, j_nbr] == INTERFACE
+            dm[k, i, j]      =  (0.5 * (ϵ[i_nbr, j_nbr] + ϵ[i, j]) * 
+                                 (f[opp_k, i_nbr, j_nbr] - f[k, i, j]));
+            m[i, j]         +=  dm[k, i, j];
+          else
+            error("State $(states[i_nbr, j_nbr]), not understood");
+          end
 
-      end # for each neighbor
-    else
-      dm[:, i, j] = 0.0;
-    end # only transfer mass across interface cells
-  end # for each node
+        end # for each neighbor
+      else
+        dm[:, i, j] = 0.0;
+      end # only transfer mass across interface cells
+    end # for each node
+  end
 
   for j=1:nj, i=1:ni, k=1:nk
     const i_nbr   =   i + c[1,k];
@@ -155,13 +165,13 @@ function masstransfer!(f::Array{Float64, 3}, c::Matrix{Int64},
       continue;
     end
 
-    @assert(abs(dm[k, i, j] + dm[_opp_k(k), i_nbr, j_nbr]) < 1e-12, 
+    #=@assert(abs(dm[k, i, j] + dm[_opp_k(k), i_nbr, j_nbr]) < 1e-12, 
             "Changes in mass should be symmetrical, " * 
             "($k, $i, $j) != -($(_opp_k(k)), $i_nbr, $j_nbr) => " *
             "$(dm[k, i, j]) != $(-dm[_opp_k(k), i_nbr, j_nbr])"   *
             "($i, $j) is $(states[i, j]) with ϵ = $(ϵ[i, j]), "   *
             "($i_nbr, $j_nbr) is $(states[i_nbr, j_nbr]) with "   *
-            "ϵ = $(ϵ[i_nbr, j_nbr])");
+            "ϵ = $(ϵ[i_nbr, j_nbr])");=#
   end
 
   #@assert(abs(sum(dm)) < 1e-9, "Mass should be conserved");
@@ -173,19 +183,22 @@ function stream!(f::Array{Float64, 3}, c::Matrix{Int64}, states::Matrix{State})
   const nk      =   size(c, 2);
 
   f_new         =   copy(f);
-  
-  for j=1:nj, i=1:ni
-    if states[i, j] != GAS
-      for k=1:nk-1
-        const i_nbr   =   i + c[1,k];
-        const j_nbr   =   j + c[2,k];
+ 
+  for r in size(_SBOUNDS, 2)
+    i_min, i_max, j_min, j_max = _SBOUNDS[:,r];
+    for j=1:nj, i=1:ni
+      if states[i, j] != GAS
+        for k=1:nk-1
+          const i_nbr   =   i + c[1,k];
+          const j_nbr   =   j + c[2,k];
 
-        if (i_nbr < 1 || i_nbr > ni || j_nbr < 1 || j_nbr > nj ||
-            states[i_nbr, j_nbr] == GAS) # if out of bounds or at a gas cell
-          continue;
+          if (i_nbr < i_min || i_nbr > i_max || j_nbr < j_min || j_nbr > j_max ||
+              states[i_nbr, j_nbr] == GAS) # if out of bounds or at a gas cell
+            continue;
+          end
+
+          f_new[k, i_nbr, j_nbr] = f[k, i, j];
         end
-
-        f_new[k, i_nbr, j_nbr] = f[k, i, j];
       end
     end
   end
@@ -267,10 +280,15 @@ function collide!(f::Array{Float64, 3}, w::Vector{Float64}, c::Matrix{Int64},
   const ni, nj  = size(states);
   const nk      =   size(c, 2);
 
-  for j=1:nj, i=1:ni, k=1:nk
-    if states[i, j] != GAS
-      f[k, i, j] += (ω * (feq(ρ[i, j], w[k], c[:, k], u[:, i, j]) - f[k, i, j])
-                     + ϵ[i, j] * w[k] * 3.0 * dot(g, c[:, k]));
+  for r in size(_CBOUNDS, 2)
+    i_min, i_max, j_min, j_max = _CBOUNDS[:,r];
+    for j=1:nj, i=1:ni
+      if states[i, j] != GAS
+        for k=1:nk
+          f[k, i, j] += (ω * (feq(ρ[i, j], w[k], c[:, k], u[:, i, j]) - f[k, i, j])
+                         + ϵ[i, j] * w[k] * 3.0 * dot(g, c[:, k]));
+        end
+      end
     end
   end
 end
@@ -307,7 +325,7 @@ function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State},
 
     if states[ni, j]  != GAS
       # north wall
-      u_x = (f[9,ni,j] + f[2,ni,j] + f[4,ni,j] +
+      #=u_x = (f[9,ni,j] + f[2,ni,j] + f[4,ni,j] +
                 2 * (f[1,ni,j] + f[5,ni,j] + f[8,ni,j])) / rho_out - 1;
       f[3,ni,j] = f[1,ni,j] - 2/3 * rho_out * u_x;
 
@@ -315,7 +333,29 @@ function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State},
       third_term = 1/6 * rho_out * u_x;
 
       f[7,ni,j] = f[5,ni,j] + second_term - third_term;
-      f[6,ni,j] = f[8,ni,j] - second_term - third_term;
+      f[6,ni,j] = f[8,ni,j] - second_term - third_term;=#
+    end
+  end
+
+  for i=24:32
+    if states[i, 8]   != GAS
+      # south wall
+      for (k1, k2) in zip((2, 5, 6),(4, 7, 8))
+        f[k1, i, 8]   =   f[k2, i, 8];
+      end
+    end
+  end
+
+  for j=1:8
+    if states[24, j]  !=  GAS
+      for (k1, k2) in zip((1, 5, 8),(3, 7, 6)) 
+        f[k1, 24, j]   =   f[k2, 24, j];
+      end
+    end
+    if states[32, j]  !=  GAS
+      for (k1, k2) in zip((3, 7, 6),(1, 5, 8)) 
+        f[k1, 32, j]   =   f[k2, 32, j];
+      end
     end
   end
 end
@@ -501,7 +541,7 @@ function _main()
   const   ω             =     1.0 / (nu + 0.5);   # collision frequency
   const   ρ_0           =     1.0;                # reference density
   const   ρ_A           =     1.0;                # atmosphere pressure
-  const   g             =     [1.0e-6; 0.0e-5];   # gravitation acceleration
+  const   g             =     [1.0e-7; 3.0e-7];   # gravitation acceleration
 
   const   κ             =     1.0e-3;             # state change (mass) offset
   
@@ -533,12 +573,13 @@ function _main()
     init_mass   =   sum(m);
 
     # process
-    if step % 250 == 0
+    if step % 25 == 0
       clf();
       cs = contourf(transpose(m), levels=[-0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.50]);
       colorbar(cs);
+      axhspan(0.0, 8.0, xmin=24.0/64.0, xmax=32.0/64.0, facecolor="black");
       draw();
-      savefig(joinpath("figs-256", @sprintf("mass_step-%09d.png", step)));
+      savefig(joinpath("figs-64go", @sprintf("mass_step-%09d.png", step)));
       pause(0.001);
       println("step: ", step);
     end

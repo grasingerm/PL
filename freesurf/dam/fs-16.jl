@@ -299,7 +299,6 @@ function boundary_conditions!(f::Array{Float64, 3}, states::Matrix{State},
     if states[1, j]   != GAS 
       # west wall
       for (k1, k2) in zip((1, 5, 8),(3, 7, 6)) 
-        m0 = m[1, j];
         f[k1, 1, j]   =   f[k2, 1, j];
       end
     end
