@@ -92,3 +92,31 @@ for k=1:100
 end
 
 println("Tests passed for sum of a unit sequence analytical solution.");
+
+function Σ_fib_even_lt(f_max)
+  f0    =   0;
+  f1    =   1;
+  fn    =   f1 + f0;
+  sum   =   0;
+  while fn < f_max
+    if fn % 2 == 0
+      sum   +=    fn;
+    end
+    f0  =   f1;
+    f1  =   fn;
+    fn  =   f1 + f0;
+  end
+  return sum;
+end
+
+ifiba(f)  =   log(sqrt(5.0) * f) / log(ϕ);
+
+function Σ_fib_even_lta(f_max)
+  const n   =   floor(ifiba(f_max));
+  return  Σ_fiba_even(n);
+end
+
+@time sum0  =   Σ_fib_even_lt(4e6);
+println("Brute force method: $sum0");
+@time sum1  =   Σ_fib_even_lta(4e6);
+println("Analytical method: $sum1");
