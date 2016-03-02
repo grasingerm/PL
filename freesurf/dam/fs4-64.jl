@@ -502,7 +502,7 @@ function adapt_time_step!(f::Array{Float64, 3}, c::Matrix{Int64},
   end
   debug("||u||_max = $u_mag_max");
 
-  if      u_mag_max > (1/6 / ξ) # decrease time step
+  if      u_mag_max > (1/6 / ξ) && ω < 1.99 # decrease time step, TODO heuristic
     debug("Decreasing time step size");
     Δt_n            =   ξ * Δt;
     s_t             =   Δt_n / Δt;
@@ -559,7 +559,7 @@ function _main()
           ω             =     1.0 / (nu + 0.5);   # collision frequency
   const   ρ_0           =     1.0;                # reference density
   const   ρ_A           =     1.0;                # atmosphere pressure
-          g             =     [0.0; -1.0e-4];     # gravitation acceleration
+          g             =     [0.0; -5.0e-4];     # gravitation acceleration
 
   const   κ             =     1.0e-3;             # state change (mass) offset
   
@@ -603,7 +603,7 @@ function _main()
       cs = contourf(transpose(m), levels=[-0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25]);
       colorbar(cs);
       draw();
-      savefig(joinpath("figs3-64", @sprintf("mass_step-%09d.png", round(t_total))));
+      savefig(joinpath("figs4-64", @sprintf("mass_step-%09d.png", round(t_total))));
       pause(0.001);
       println("time: ", t_total);
       t_next = 0.0;
