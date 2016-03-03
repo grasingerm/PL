@@ -1,3 +1,5 @@
+#import Roots
+
 const ϕ   =   (1 + sqrt(5)) / 2;
 const ψ   =   (1 - sqrt(5)) / 2;
 
@@ -109,14 +111,50 @@ function Σ_fib_even_lt(f_max)
   return sum;
 end
 
+const lnψ = log(abs(ψ));
+const lnϕ = log(ϕ);
 ifiba(f)  =   log(sqrt(5.0) * f) / log(ϕ);
-
-function Σ_fib_even_lta(f_max)
-  const n   =   floor(ifiba(f_max));
-  return  Σ_fiba_even(n);
+approx_ψ_xth_power(x) = -1 - x*lnψ - 1/2*x^2*lnψ^2 -1/6*x^3*lnψ^3 - 1/24*x^4*lnψ^4 - 1/120*x^5*lnψ^5 - 1/720*x^6*lnψ^6; 
+function R(f, n)
+  return f - 1/sqrt(5.0) * (ϕ^n - approx_ψ_xth_power(n));
 end
+function dR(f, n)
+  return 1/sqrt(5.0) * (ϕ^n * log(ϕ) - approx_ψ_xth_power(n) * lnψ);
+end
+
+function ifib_newton(f; ϵ=1e-5, max_steps=Int=1000, α=1.0)
+  if f == 0.0; return 0; end
+  n   =   round(ifiba(f));
+  info("Initial guess for n = $n");
+  for step=1:max_steps
+    n0   =    n;
+    n   -=    α * R(f, n) / dR(f, n);
+    info("Step = $step; New n = $n");
+    if abs(n - n0) / abs(n) < ϵ
+      return round(n);
+    end
+  end
+  return round(n);
+end
+
+function ifib_rough(f)
+  return round(ifiba(f));
+end
+
+function Σ_fib_even_lta(f)
+  n   =   ifib_rough(f);
+  return  Σ_fiba_even(n - n % 3 + 3);
+end
+
+Σ_fib_even_lt(18);  # make sure code is compiled before profiling
+Σ_fib_even_lta(18);
 
 @time sum0  =   Σ_fib_even_lt(4e6);
 println("Brute force method: $sum0");
 @time sum1  =   Σ_fib_even_lta(4e6);
+println("Analytical method: $sum1");
+
+@time sum0  =   Σ_fib_even_lt(8e8);
+println("Brute force method: $sum0");
+@time sum1  =   Σ_fib_even_lta(8e8);
 println("Analytical method: $sum1");
