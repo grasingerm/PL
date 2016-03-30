@@ -1,4 +1,5 @@
 using PyPlot;
+PyPlot.ion();
 using List;
 using Logging;
 
@@ -530,9 +531,9 @@ function _main()
       clf();
       cs = contourf(transpose(m), levels=[-0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25]);
       colorbar(cs);
-      #draw();
+      draw();
       savefig(joinpath("figs-64", @sprintf("mass_step-%09d.png", step)));
-      #pause(0.001);
+      pause(0.001);
       println("step: ", step);
     end
     

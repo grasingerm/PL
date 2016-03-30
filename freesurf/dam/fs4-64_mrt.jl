@@ -1,4 +1,5 @@
 using PyPlot;
+PyPlot.ion();
 using List;
 using Logging;
 
@@ -263,13 +264,32 @@ function collide!(f::Array{Float64, 3}, w::Vector{Float64}, c::Matrix{Int64},
                   ρ::Matrix{Float64}, u::Array{Float64, 3}, ω::Real,
                   ϵ::Matrix{Float64}, states::Matrix{State}, g::Vector{Float64})
 
+  const M = ([
+             1.0    1.0    1.0    1.0    1.0    1.0    1.0    1.0    1.0;
+            -1.0   -1.0   -1.0   -1.0    2.0    2.0    2.0    2.0   -4.0;
+            -2.0   -2.0   -2.0   -2.0    1.0    1.0    1.0    1.0    4.0;
+             1.0    0.0   -1.0    0.0    1.0   -1.0   -1.0    1.0    0.0;
+            -2.0    0.0    2.0    0.0    1.0   -1.0   -1.0    1.0    0.0;
+             0.0    1.0    0.0   -1.0    1.0    1.0   -1.0   -1.0    0.0;
+             0.0   -2.0    0.0    2.0    1.0    1.0   -1.0   -1.0    0.0;
+             1.0   -1.0    1.0   -1.0    0.0    0.0    0.0    0.0    0.0;
+             0.0    0.0    0.0    0.0    1.0   -1.0    1.0   -1.0    0.0;
+           ]);
+  const iM = inv(M);
+  const S  = spdiagm([0.0; 1.1; 1.0; 0.0; 1.2; 0.0; 1.2; ω; ω]); 
+
   const ni, nj  = size(states);
   const nk      =   size(c, 2);
 
-  for j=1:nj, i=1:ni, k=1:nk
+  for j=1:nj, i=1:ni
     if states[i, j] != GAS
-      f[k, i, j] += (ω * (feq(ρ[i, j], w[k], c[:, k], u[:, i, j]) - f[k, i, j])
-                     + ϵ[i, j] * w[k] * 3.0 * dot(g, c[:, k]));
+      fneq = Vector{Float64}(nk);
+      F    = Vector{Float64}(nk);
+      for k=1:nk
+        fneq[k] = f[k,i,j] - feq(ρ[i, j], w[k], c[:, k], u[:, i, j]);
+        F[k]    = ϵ[i, j] * w[k] * 3.0 * dot(g, c[:, k]);
+      end
+      f[:, i, j] -= iM * S * M * fneq - F;
     end
   end
 end
@@ -483,28 +503,94 @@ function update_cell_states!(f::Array{Float64, 3}, c::Matrix{Int64},
   reset_logging_to_default();
 end
 
+#! Adaptively select time step in order to remain stable
+function adapt_time_step!(f::Array{Float64, 3}, c::Matrix{Int64}, 
+                          w::Vector{Float64}, ρ::Matrix{Float64}, 
+                          u::Array{Float64, 3}, ϵ::Matrix{Float64}, 
+                          m::Matrix{Float64}, states::Matrix{State},
+                          Δt::Real, ω::Real, g::Vector{Float64}; ξ::Real=4/5)
+  #Logging.configure(level=DEBUG);
+  const ni, nj  =   size(states);
+  const nk      =   length(w);
+
+  u_mag_max = 0.0;
+  for j=1:nj, i=1:ni
+    if states[i, j] != GAS && (u_mag_ij = norm(u[:, i, j], 2)) > u_mag_max
+      u_mag_max = u_mag_ij;
+    end
+  end
+  debug("||u||_max = $u_mag_max");
+
+  if      u_mag_max > (1/6 / ξ) && ω < 1.99 # decrease time step, TODO heuristic
+    debug("Decreasing time step size");
+    Δt_n            =   ξ * Δt;
+    s_t             =   Δt_n / Δt;
+    ω_n             =   1 / ( s_t * (1/ω - 1/2) + 1/2 );
+    g_n             =   s_t*s_t * g;
+
+    const ρ_med     =   sum(ϵ) / sum(m);
+    
+    for j=1:nj, i=1:ni
+      if states[i, j] != GAS
+        ρ_0             =   ρ[i, j];
+        u_0             =   u[:, i, j];
+        ρ[i, j]         =   s_t * (ρ[i, j] - ρ_med) + ρ_med;
+        u[:, i, j]     *=   s_t;
+        m[i, j]        *=   ρ_0 / ρ[i, j];
+        ϵ               =   m[i, j] / ρ[i, j];
+
+        s_ω             =   s_t * (ω / ω_n);
+        for k=1:nk
+          feq_0             =   feq(ρ_0, w[k], c[:, k], u_0);
+          s_f               =   feq(ρ[i, j], w[k], c[:, k], u[:, i, j]) / feq_0;
+          f[k, i, j]        =   s_f * (feq_0 + s_ω * (f[k, i, j] - feq_0));
+        end
+      end
+    end
+
+    debug("New time step size: $(Δt_n)");
+    debug("New collision frequency: $(ω_n)");
+    debug("New gravitation acceleration: $(g_n)");
+
+    reset_logging_to_default();
+    return Δt_n, ω_n, g_n; 
+
+  elseif  u_mag_max < (ξ / 6)   # increase time step 
+    reset_logging_to_default();
+    return Δt, ω, g;
+  else
+    reset_logging_to_default();
+    return Δt, ω, g;
+  end
+
+end
+
 # Main function
 function _main()
   reset_logging_to_default();
+
+  const   ξ             =     4/5;
 
   const   nx::UInt      =     64;
   const   ny::UInt      =     64;
 
   const   nu            =     0.2;                # viscosity
-  const   ω             =     1.0 / (nu + 0.5);   # collision frequency
+          ω             =     1.0 / (nu + 0.5);   # collision frequency
   const   ρ_0           =     1.0;                # reference density
   const   ρ_A           =     1.0;                # atmosphere pressure
-  const   g             =     [0.0; -1.0e-4];     # gravitation acceleration
+          g             =     [0.0; -5.0e-4];     # gravitation acceleration
 
   const   κ             =     1.0e-3;             # state change (mass) offset
   
-  const   nsteps::UInt  =     10000000;
+  const   nsteps::UInt  =     50000;
 
   const   c             =     (Int64[1 0; 0 1; -1 0; 0 -1; 1 1; -1 1; -1 -1; 
                                      1 -1; 0 0]');
   const   w             =     (Float64[1.0/9.0; 1.0/9.0; 1.0/9.0; 1.0/9.0; 
                                        1.0/36.0; 1.0/36.0; 1.0/36.0; 1.0/36.0; 
                                        4.0/9.0]);
+
+  Δt                    =     1.0;
 
   f                     =     zeros(Float64, 9, nx, ny);
   ρ                     =     zeros(Float64, nx, ny);
@@ -521,23 +607,29 @@ function _main()
   println();
   println("Starting simulation...");
 
+  t_total               =     0.0;
+  const t_out           =     50.0;
+  t_next                =     t_out;
   # iterate through time steps
-  for step=0:nsteps # start at zero so we can have a figure of the initial conditions
+  while t_total < nsteps
     init_mass   =   sum(m);
+    t_total    +=   Δt;
+    t_next     +=   Δt;
 
     # process
-    if step % 250 == 0
+    if t_next >= t_out
       clf();
       cs = contourf(transpose(m), levels=[-0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25]);
       colorbar(cs);
-      #draw();
-      savefig(joinpath("figs2-64", @sprintf("mass_step-%09d.png", step)));
-      #pause(0.001);
-      println("step: ", step);
+      draw();
+      savefig(joinpath("figs4-64_mrt", @sprintf("mass_step-%09d.png", round(t_total))));
+      pause(0.001);
+      println("time: ", t_total);
+      t_next = 0.0;
     end
     
     # mass transfer
-    println("Transfering mass...");
+    #println("Transfering mass...");
     im1 = sum(m);
     masstransfer!(f, c, ϵ, m, states);
     map_to_macro!(f, c, ρ, u);
@@ -548,7 +640,7 @@ function _main()
     end
 
     # stream
-    println("Streaming...");
+    #println("Streaming...");
     im1 = sum(m);
     stream!(f, c, states);
     map_to_macro!(f, c, ρ, u);
@@ -558,7 +650,7 @@ function _main()
       warn("dm -> $(sum(m) - im1)");
     end
 
-    println("Reconstructing DFs...");
+    #println("Reconstructing DFs...");
     im1 = sum(m);
     # reconstruct DFs from empty cells
     reconstruct_from_empty!(f, w, c, u, ϵ, states, ρ_A);
@@ -580,7 +672,7 @@ function _main()
     end
 
     # perform collision
-    println("Performing collisions...");
+    #println("Performing collisions...");
     im1 = sum(m);
     collide!(f, w, c, ρ, u, ω, ϵ, states, g);
     map_to_macro!(f, c, ρ, u);
@@ -591,7 +683,7 @@ function _main()
     end
 
     # boundary conditions
-    println("Enforcing boundary conditions...");
+    #println("Enforcing boundary conditions...");
     im1 = sum(m);
     boundary_conditions!(f, states, m);
     map_to_macro!(f, c, ρ, u);
@@ -602,7 +694,7 @@ function _main()
     end
 
     # calculate macroscopic variables
-    println("Calculating macroscopic variables...");
+    #println("Calculating macroscopic variables...");
     im1 = sum(m);
     map_to_macro!(f, c, ρ, u);
     if abs(sum(m) - im1) < 1e-13
@@ -612,7 +704,7 @@ function _main()
     end
 
     # update fluid fraction
-    println("Updating fluid fractions...");
+    #println("Updating fluid fractions...");
     im1 = sum(m);
     elst, flst = update_fluid_fraction!(ρ, ϵ, m, states, κ);
     map_to_macro!(f, c, ρ, u);
@@ -627,7 +719,7 @@ function _main()
       update_cell_states!(f, c, w, ρ, u, ϵ, m, states, elst, flst),
       "update cell states",
       m);=#
-    println("Updating cell states...");
+    #println("Updating cell states...");
     im2 = sum(m);
     update_cell_states!(f, c, w, ρ, u, ϵ, m, states, elst, flst);
     map_to_macro!(f, c, ρ, u);
@@ -637,7 +729,15 @@ function _main()
       warn("dm -> $(sum(m) - im2)");
     end
 
-    println("Testing conditions...");
+    im2       = sum(m);
+    Δt, ω, g  = adapt_time_step!(f, c, w, ρ, u, ϵ, m, states, Δt, ω, g; ξ=ξ);
+    if abs(sum(m) - im2) < 1e-13
+      debug("dm -> ", sum(m) - im2);
+    else
+      warn("dm -> $(sum(m) - im2)");
+    end
+
+    #println("Testing conditions...");
     #=for j=1:ny, i=1:nx
       if states[i, j] == FLUID
         @assert(ϵ[i, j] == 1.0, 
@@ -653,10 +753,6 @@ function _main()
                 "$(ϵ[i, j]) != $(m[i, j]) / $(ρ[i, j]).");
       end
     end=#
-
-    println("End step.");
-    @show sum(m) - init_mass;
-    println();
   end
 
 end
