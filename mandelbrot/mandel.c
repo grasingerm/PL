@@ -89,6 +89,7 @@ void write_table(const char* fname, const linspace* cx, const linspace* cy,
       fprintf(w, "%lf %lf %u\n", x, y, *(mtable + i * m + j));
       y += cy->step;
     }
+    fputc('\n', w);
     x += cx->step;
   }
 
@@ -98,6 +99,8 @@ void write_table(const char* fname, const linspace* cx, const linspace* cy,
 int comp2str(char* buffer, const size_t n, const complex* c) {
   return snprintf(buffer, n, "%lf + %lfi", c->x, c->y);
 }
+
+static const int plot_type = 2;
 
 int main(int argc, char* argv[]) {
   if (argc != 8) {
@@ -120,16 +123,25 @@ int main(int argc, char* argv[]) {
   gnuplot_ctrl *h;
   h = gnuplot_init();
 
-  gnuplot_cmd(h, "set view map");
-  gnuplot_cmd(h, "unset key");
-  gnuplot_cmd(h, "unset surface");
-  gnuplot_cmd(h, "set contour");
-  gnuplot_cmd(h, "set dgrid3d");
-  gnuplot_cmd(h, "set cntrparam cubicspline");
-  gnuplot_cmd(h, "set cntrparam levels %u", maxiters);
-  gnuplot_cmd(h, "set pm3d");
-  gnuplot_cmd(h, "set pm3d interpolate 20,20");
-  gnuplot_cmd(h, "splot \"mandel.dat\" using 1:2:3 notitle with l");
+  switch (plot_type) {
+    case 1:
+      gnuplot_cmd(h, "set view map");
+      gnuplot_cmd(h, "unset key");
+      gnuplot_cmd(h, "unset surface");
+      gnuplot_cmd(h, "set contour");
+      gnuplot_cmd(h, "set dgrid3d");
+      gnuplot_cmd(h, "set cntrparam cubicspline");
+      gnuplot_cmd(h, "set cntrparam levels %u", maxiters);
+      gnuplot_cmd(h, "set pm3d");
+      gnuplot_cmd(h, "set pm3d interpolate 20,20");
+      gnuplot_cmd(h, "splot \"mandel.dat\" using 1:2:3 notitle with l");
+      break;
+    case 2:
+      gnuplot_cmd(h, "set view map");
+      gnuplot_cmd(h, "unset key");
+      gnuplot_cmd(h, "splot \"mandel.dat\" matrix with image");
+      break;
+  }
 
   sleep(30);
 
