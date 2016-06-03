@@ -80,15 +80,11 @@ int main(int argc, char* argv[])
     unsigned int ntosses = 1;
     int day = flip();
 
-    // cout << day << endl;
-
     while (!bins[day])
     {
       bins[day] = true;
       day = flip();
       ntosses++;
-
-      // cout << day << endl;
     }
 
     if (ntosses <= ptoss)

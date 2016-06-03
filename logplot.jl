@@ -1,6 +1,6 @@
 import PyPlot;
 
-show_plot = false;
+show_plot = true;
 
 eval(if show_plot
        :(PyPlot.ion();)
@@ -19,10 +19,10 @@ xlabel = "x";
 ylabel = "2^x";
 
 eval(if xlabel != ""
-       :(PyPlot.xlabel($xlabel););
+       :(PyPlot.xlabel(xlabel););
      end)
 eval(if ylabel != ""
-       :(PyPlot.ylabel($ylabel););
+       :(PyPlot.ylabel(ylabel););
      end)
 
 PyPlot.xlim((0.0, 20.0));
