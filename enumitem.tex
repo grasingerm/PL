@@ -1,0 +1,44 @@
+\documentclass{article}
+\usepackage{enumitem}
+\setlistdepth{9}
+
+\newlist{myEnumerate}{enumerate}{9}
+\setlist[myEnumerate,1]{label=(\arabic*)}
+\setlist[myEnumerate,2]{label=(\Roman*)}
+\setlist[myEnumerate,3]{label=(\Alph*)}
+\setlist[myEnumerate,4]{label=(\roman*)}
+\setlist[myEnumerate,5]{label=(\alph*)}
+\setlist[myEnumerate,6]{label=(\arabic*)}
+\setlist[myEnumerate,7]{label=(\Roman*)}
+\setlist[myEnumerate,8]{label=(\Alph*)}
+\setlist[myEnumerate,9]{label=(\roman*)}
+
+\begin{document}
+\begin{myEnumerate}
+\item 1st level
+    \begin{myEnumerate}
+    \item 2nd level
+        \begin{myEnumerate}
+        \item 3rd level
+            \begin{myEnumerate}
+            \item 4th level
+                \begin{myEnumerate}
+                \item 5th level
+                    \begin{myEnumerate}
+                    \item 6th level
+                        \begin{myEnumerate}
+                        \item 7th level
+                            \begin{myEnumerate}
+                            \item 8th level
+                                \begin{myEnumerate}
+                                \item 9th level
+                                \end{myEnumerate}
+                            \end{myEnumerate}
+                        \end{myEnumerate}
+                    \end{myEnumerate}
+                \end{myEnumerate}
+            \end{myEnumerate}
+        \end{myEnumerate}
+    \end{myEnumerate}
+\end{myEnumerate}
+\end{document}

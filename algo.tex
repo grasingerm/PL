@@ -1,0 +1,84 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+
+\makeatletter
+\def\BState{\State\hskip-\ALG@thistlm}
+\makeatother
+
+\begin{document}
+\begin{algorithm}
+\caption{My algorithm}\label{euclid}
+\begin{algorithmic}[1]
+\Procedure{MyProcedure}{}
+\State $\textit{stringlen} \gets \text{length of }\textit{string}$
+\State $i \gets \textit{patlen}$
+\BState \emph{top}:
+\If {$i > \textit{stringlen}$} \Return false
+\EndIf
+\State $j \gets \textit{patlen}$
+\BState \emph{loop}:
+\If {$\textit{string}(i) = \textit{path}(j)$}
+\State $j \gets j-1$.
+\State $i \gets i-1$.
+\State \textbf{goto} \emph{loop}.
+\State \textbf{close};
+\EndIf
+\State $i \gets i+\max(\textit{delta}_1(\textit{string}(i)),\textit{delta}_2(j))$.
+\State \textbf{goto} \emph{top}.
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+    \caption{CH election algorithm}
+    \label{CHalgorithm}
+    \begin{algorithmic}[1]
+        \Procedure{CH\textendash Election} {}
+        \For{each node $i$ \Pisymbol{psy}{206} $N$ }
+        \\Broadcast HELLO message to its neighbor
+        \\let $k$ \Pisymbol{psy}{206} $N1$ ($i$) U {$i$} be s.t
+        \\QOS($k$) = max {QOS($j$) \textbar $j$ \Pisymbol{psy}{206} $N1$($i$)  U $i$}
+        \\ MPRSet($i$) = $k$
+        \EndFor
+        \EndProcedure
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Merge Sort}
+\begin{algorithmic}[1]
+    \Function{Merge}{$A,p,q,r$}\Comment{Where A - array, p - left, q - middle, r - right}
+    
+    \State ${n_1} = q - p + 1$
+    \State ${n_2} = r - q$
+    \State Let $L[1 \ldots {n_1} + 1]$ and $R[1 \ldots {n_2} + 1]$ be new arrays
+    \For{$i = 1$ to ${n_1}$}
+    \State $L[i] = A[p + i - 1]$
+    \EndFor
+    \For{$j = 1$ to ${n_2}$}
+    \State $R[i] = A[q + j]$
+    \EndFor
+    \State $L[{n_1} + 1] =  \infty $
+    \State $R[{n_2} + 1] =  \infty $
+    \State $i = 1$
+    \State $j = 1$
+    \For{$k = p$ to $r$}
+    \If {$L[i] < R[j]$}
+    \State $A[k] = L[i]$
+    \State $i = i + 1$
+    \ElsIf {$L[i] > R[j]$}
+    \State $A[k] = R[j]$
+    \State $j = j + 1$
+    \Else
+    \State $A[k] = - \infty$ \Comment{We mark the duplicates with the largest negative integer}
+    \State $j = j + 1$
+    \EndIf
+    \EndFor
+    \EndFunction
+    
+\end{algorithmic}
+\end{algorithm}
+
+\end{document}
