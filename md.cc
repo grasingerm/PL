@@ -24,7 +24,15 @@ private:
   array<double, 2> pos;
   array<double, 2> vel;
   double mass;
+protected:
+  void accelerate(const double ax, const double ay) {
+    vel[0] += ax;
+    vel[1] += ay;
+  }
 public: // some accessors?
+  inline const array<double, 2>& getVel() const { return vel; } 
+  inline const array<double, 2>& getPos() const { return pos; } 
+  inline const double& getMass() const { return mass; } 
 }
 
 class Argon : public Molecule {}
