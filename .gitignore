@@ -5,3 +5,6 @@
 *.png
 *.gif
 *.o
+/java/tst/nbproject/private/
+/java/tst/build/
+/java/tst/dist/
