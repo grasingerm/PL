@@ -1,0 +1,1 @@
+/usr/bin/c++    -Wall -Wextra -Wpedantic -g -pedantic -pedantic-errors -std=c++14    CMakeFiles/main.dir/main.cc.o CMakeFiles/main.dir/src1.cc.o CMakeFiles/main.dir/src2.cc.o  -o main -rdynamic 

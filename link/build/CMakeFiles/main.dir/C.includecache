@@ -1,0 +1,30 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/clementine/Shared/Dev/PL/link/main.c
+src1.h
+/home/clementine/Shared/Dev/PL/link/src1.h
+src2.h
+/home/clementine/Shared/Dev/PL/link/src2.h
+stdio.h
+-
+
+/home/clementine/Shared/Dev/PL/link/src1.c
+src1.h
+/home/clementine/Shared/Dev/PL/link/src1.h
+
+/home/clementine/Shared/Dev/PL/link/src1.h
+
+/home/clementine/Shared/Dev/PL/link/src2.c
+src2.h
+/home/clementine/Shared/Dev/PL/link/src2.h
+src1.h
+/home/clementine/Shared/Dev/PL/link/src1.h
+
+/home/clementine/Shared/Dev/PL/link/src2.h
+

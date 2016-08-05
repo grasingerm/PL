@@ -1,0 +1,1 @@
+/usr/bin/cc   -Wall -Wextra -Wpedantic -g -pedantic -pedantic-errors -std=c99    CMakeFiles/main.dir/main.c.o CMakeFiles/main.dir/src1.c.o CMakeFiles/main.dir/src2.c.o  -o main -rdynamic 

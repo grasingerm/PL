@@ -18,6 +18,8 @@ int main() {
 
   queue<int> q;
   for (int i = -1; i < 10; ++i) q.push(i);
+  cout << "Queue front, first value entered in queue = " << q.front() << '\n';
+  cout << "Queue back, last value entered in queue = " << q.back() << '\n';
   cout << "Popping off queue...\n";
   while (!q.empty()) {
     cout << q.front() << "\n";
