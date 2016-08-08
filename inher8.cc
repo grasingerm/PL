@@ -20,6 +20,8 @@ public:
 class Derived2 : public Base {
 private:
   void _yolo() { std::cout << "Derived2 yolo()\n"; }
+public:
+  void yolo2() { std::cout << "Derived2 yolo2()\n"; }
 };
 
 int main() {
@@ -38,7 +40,9 @@ int main() {
   if (d2d != nullptr) d2d->yolo2();
   else cout << "Could not downcast b2 to Derived1*\n";
 
-  throw std::logic_error("This is a fucking logic error");
+  const auto d3d = dynamic_cast<Derived2*>(b2);
+  if (d3d != nullptr) d3d->yolo2();
+  else cout << "Could not downcast b2 to Derived2*\n";
 
   return 0;
 }
