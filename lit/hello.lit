@@ -1,0 +1,37 @@
+@title Hello world in C
+
+@s Introduction
+
+This is an **example** *hello* world C program.
+We can define ~~codeblocks~~ with `---`
+
+In the words of Abraham Lincoln:
+
+> Pardon my french
+
+* fuck
+* poop
+** more poop
+* yolo
+
+--- hello.c
+@{Includes}
+
+int main() {
+  @{Print a string}
+  // this is a comment!
+  return 0;
+}
+---
+
+Now we can define the `Includes` codeblock:
+
+--- Includes
+#include <stdio.h>
+---
+
+Finally, our program needs to print "hello world"
+
+--- Print a string
+printf("hello world\n");
+---
