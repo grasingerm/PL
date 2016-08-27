@@ -34,6 +34,10 @@ template <typename T, size_t N> auto dot(const array<T, N>& a1, const array<T, N
   return retval;
 }
 
+template <size_t N> void print_unit_range() {
+  for (unsigned i = 0; i < N; ++i) cout << i << '\n';
+}
+
 int main() {
   array<double, 3> a1 { { 1.5, 2.0, 2.5 } };
   array<double, 3> a2 { { 0.5, 1.5, 2.0 } };
@@ -43,6 +47,8 @@ int main() {
   cout << a1 - a2 << '\n';
   cout << a1 + a2 << '\n';
   cout << dot(a1, a2) << '\n';
+  print_unit_range<4>();
+  print_unit_range<14>();
 
   return 0;
 }
