@@ -8,3 +8,7 @@
 /java/tst/nbproject/private/
 /java/tst/build/
 /java/tst/dist/
+
+*.class
+*.toc
+a.out

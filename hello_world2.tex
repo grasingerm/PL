@@ -1,0 +1,53 @@
+\input cwebmac
+
+\N{1}{1}An example of {\tt CWEB}.
+This example is blah blah blah.
+I just hope it works.
+
+\fi
+
+\M{2}This is the \TeX part.
+It contains explanatory material about what is going on in the section.
+The include section is where header files are included to provide prototypes
+for library functions.
+If \PB{\\{pa}} is declared as `\PB{\&{int} ${}{*}\\{pa}$}`, the assignment %
+\PB{$\\{pa}\K{\AND}\|a[\T{0}]$} makes \PB{\\{pa}} point to the zeroth element
+of \PB{\|a}.
+
+\Y\B\8\#\&{include} \.{<stdio.h>}\par
+\fi
+
+\M{3}If necessary, this section is typically where file specific function
+prototypes and global variables are defined.
+
+\Y\B\&{static} \&{const} \&{char} ${}{*}\\{msg}\K\.{"Hello\ world!\ This\ i}\)%
+\.{s\ the\ shit"};{}$\6
+\&{void} \\{say\_hello\_world}(\,);\par
+\fi
+
+\M{4}This is where the magic happens.
+The \PB{\\{main}} function is what gets executed when the program is run.
+By convention, the \PB{\\{main}} function returns an \PB{\&{int}}.
+The \PB{\&{int}} is generally an exit code.
+
+\Y\B\&{int} \\{main}(\,)\1\1\2\2\6
+${}\{{}$\1\6
+\\{say\_hello\_world}(\,);\6
+\&{return} \T{0};\6
+\4${}\}{}$\2\par
+\fi
+
+\M{5}If applicable, this is generally where file specific function
+implementations go.
+In the case of the hello world example, the say hello world function needs an
+implementation.
+
+\Y\B\&{void} \\{say\_hello\_world}(\,)\1\1\2\2\6
+${}\{{}$\1\6
+\\{puts}(\\{msg});\6
+\4${}\}{}$\2\par
+\fi
+
+\inx
+\fin
+\con
