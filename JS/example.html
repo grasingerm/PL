@@ -1,0 +1,56 @@
+<html>
+
+  <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+    <script>
+      $(document).ready(function() {
+
+        $("#hello").click(function(event) {
+          event.preventDefault();
+          alert("Hello!");
+        });
+
+        $("#showhide").click(function(event) {
+          $("#toggle-content").toggle();
+        });
+
+        $("#mouse").on("mouseover", function(event) {
+          $("#mouse").addClass("highlight");
+        });
+
+        $("#mouse").on("mouseout", function(event) {
+          $("#mouse").removeClass("highlight");
+        });
+
+      });
+    </script>
+
+    <style>
+      .highlight {
+        background-color: yellow;
+      }
+
+      #page-wrap {
+        width: 800px;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="page-wrap">
+      <p>This is a paragraph</p>
+      <ul>
+        <li><a href="javascript:void(0)" id="hello">HELLO!</a></li>
+        <li><a href="javascript:void(0)" id="mouse">Mouse over this</a></li>
+      </ul>
+      <button id="showhide">Show/Hide</button>
+      <div id="toggle-content">
+        <p>This is some text.</p>
+        <p>This is some more text.</p>
+        <p>This can be hidden or displayed by clicked the above link.</p>
+      </div>
+    </div>
+  </body>
+
+</html>
