@@ -22,6 +22,40 @@
           $("#mouse").removeClass("highlight");
         });
 
+        $("#add").click(function(event) {
+          var first = parseFloat($("#first").val());
+          var second = parseFloat($("#second").val());
+          var result = first + second;
+          $("#calc-display").html(first + " + " + second + " = " + result);
+        });
+
+        $("#subtract").click(function(event) {
+          var first = parseFloat($("#first").val());
+          var second = parseFloat($("#second").val());
+          var result = first - second;
+          $("#calc-display").html(first + " - " + second + " = " + result);
+        });
+
+        $("#multiply").click(function(event) {
+          var first = parseFloat($("#first").val());
+          var second = parseFloat($("#second").val());
+          var result = first * second;
+          $("#calc-display").html(first + " * " + second + " = " + result);
+        });
+        
+        $("#divide").click(function(event) {
+          var first = parseFloat($("#first").val());
+          var second = parseFloat($("#second").val());
+          var result = first / second;
+          $("#calc-display").html(first + " - " + second + " = " + result);
+        });
+
+        $("#reset").click(function(event) {
+          $("#first").val("");
+          $("#second").val("");
+          $("#calc-display").html("");
+        });
+
       });
     </script>
 
@@ -49,6 +83,20 @@
         <p>This is some text.</p>
         <p>This is some more text.</p>
         <p>This can be hidden or displayed by clicked the above link.</p>
+      </div>
+      <div id="calc">
+        First number: <input type="text" id="first" />
+        Second number: <input type="text" id="second" />
+        <div id="operators">
+          <button id="add">+</button>
+          <button id="subtract">-</button>
+          <button id="multiply">*</button>
+          <button id="divide">/</button>
+        </div>
+        <div>
+          <button id="reset">Reset</button>
+        </div>
+        <div id="calc-display"></div>
       </div>
     </div>
   </body>
