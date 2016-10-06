@@ -9,10 +9,12 @@ int main (int argc, char* argv[]) {
 
   double start_time = omp_get_wtime();
 
-#pragma omp parallel for private(j) reduction(+:not_primes) schedule(dynamic)
+int modij;
+#pragma omp parallel for private(j,modij) reduction(+:not_primes) schedule(dynamic)
   for (i = 2; i <= n; ++i) {
     for (j = 2; j < i; ++j) {
-      if (i % j == 0) {
+      modij = i % j;
+      if (modij == 0) {
         not_primes++;
         break;
       }
