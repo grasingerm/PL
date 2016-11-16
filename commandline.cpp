@@ -28,7 +28,8 @@ int main(int argc, char **argv) {
                    "and then exits.")
     ("validate,v", "Validate an input file for correctness and then exits.")
     ("output-file,o", value<vector<string>>(), "Specifies output file.")
-    ("input-file,i", value<vector<string>>(), "Specifies input file.");
+    ("input-file,i", value<vector<string>>(), "Specifies input file.")
+    ("values,x", value<vector<double>>(), "Values to add together.");
 
   positional_options_description p;
   p.add("input-file", -1);
@@ -67,6 +68,13 @@ int main(int argc, char **argv) {
   if (vm.count("input-file")) {
     vector<string> input_filename = vm["input-file"].as<vector<string>>();
     cout << "--input-file specified with value = " << input_filename[0] << endl;
+  }
+
+  if (vm.count("values")) {
+    auto& values = vm["input-file"].as<vector<double>>();
+    double sum = 0.0;
+    for (auto& value : values) sum += value;
+    cout << "--values specified with sum = " << sum << endl;
   }
 
   return EXIT_SUCCESS;
