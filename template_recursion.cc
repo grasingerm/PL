@@ -5,9 +5,10 @@ using namespace std;
 
 template <size_t D> void print_hypercube(double* ls, size_t n) {
   double dl = *ls / static_cast<double>(n);
+  ++ls;
   for (size_t i = 0; i < n; ++i) {
     cout << dl * i + dl / 2.0 << '\n'; 
-    print_hypercube<D-1>(++ls, n);
+    print_hypercube<D-1>(ls, n);
   }
 }
 

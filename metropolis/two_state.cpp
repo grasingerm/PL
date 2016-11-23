@@ -4,12 +4,16 @@
 #include <fstream>
 #include <time.h>
 #include <iomanip>
-#include <math.h>
+#include <random>
 using namespace std;
 
 int main() {
+  default_random_engine rng;
+  uniform_int_distribution<size_t> choice_dist(0, 1);
+  uniform_real_distribution<double> eps_dist(0.0, 1.0);
+  rng.seed(random_device()());
+
 	int NTRIAL=10000000;
-	srand(time(NULL));
 	double sum_u=0;
 	double sum_x=0;
 
