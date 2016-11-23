@@ -8,6 +8,9 @@ function S(E::Matrix{Float64})
   return C_SE * E;
 end
 
+const GP = 1.0 / sqrt(3) * [-1.0; 1.0];
+const GW = [1.0; 1.0];
+
 N1(ξ, η) = 0.25 * (1.0 - ξ) * (1.0 - η);
 N2(ξ, η) = 0.25 * (1.0 + ξ) * (1.0 - η);
 N3(ξ, η) = 0.25 * (1.0 + ξ) * (1.0 + η);
@@ -40,7 +43,7 @@ end
 function F(ξ::Real, η::Real, y::Matrix{Float64})
   retval = zeros(2, 2);
   for j=1:2, i=1:2, k=1:4
-    retval[i, j] += B_[k, j](ξ, η) * y[i, k];
+    retval[i, j] += B_[j, k](ξ, η) * y[i, k];
   end
   return retval;
 end
@@ -80,16 +83,42 @@ function I(u::Matrix{Float64})
   return gauss_quad((ξ::Real, η::Real) -> (B0(ξ, η, u))' * S(E(ξ, η, u)) * J(ξ, η, X));
 end
 
+const τ = Float64[0.0 0.0; 1000.0 500.0; 0.0 0.0; 0.0 0.0]';
+const edge_idxs = [1 2; 2 3; 3 4; 4 1]';
+const edge_gps1 = [GP[1] -1.0; 1.0 GP[1]; GP[1] 1.0; -1.0 GP[1]]';
+const edge_gps2 = [GP[2] -1.0; 1.0 GP[2]; GP[2] 1.0; -1.0 GP[2]]';
+const edge_normals = [0.0 -1.0; 1.0 0.0; 0.0 1.0; -1.0 0.0]';
+
 function P()
-  return gauss_quad((ξ::Real, η::Real) -> begin
-    Fξ = F(ξ, η, X);
-    return (N(ξ, η))' * τ * det(Fξ) * norm((inv(Fξ))' * Nξ(), 2);
-  end);
+  p = zeros(8, 1);
+  for k=1:4 
+    edge_idx = sub(edge_idxs, :, k);
+    edge_gp1 = sub(edge_gps1, :, k);
+    edge_gp2 = sub(edge_gps2, :, k);
+    τk = sub(τ, :, k);
+    edge_normal = sub(edge_normals, :, k);
+
+    F1 = F(edge_gp1[1], edge_gp1[2], X);
+    J1A = det(F1) * norm(inv(F1)' * edge_normal, 2);
+
+    F2 = F(edge_gp2[1], edge_gp2[2], X);
+    J2A = det(F2) * norm(inv(F2)' * edge_normal, 2);
+
+    p[2*edge_idx[1]-1] += (N_[edge_idx[1]](edge_gp1...) * J1A + 
+                           N_[edge_idx[1]](edge_gp2...) * J2A) * τk[1];
+    p[2*edge_idx[1]]   += (N_[edge_idx[1]](edge_gp1...) * J1A + 
+                           N_[edge_idx[1]](edge_gp2...) * J2A) * τk[2];
+    p[2*edge_idx[2]-1] += (N_[edge_idx[2]](edge_gp1...) * J1A + 
+                           N_[edge_idx[2]](edge_gp2...) * J2A) * τk[1];
+    p[2*edge_idx[2]]   += (N_[edge_idx[2]](edge_gp1...) * J1A + 
+                           N_[edge_idx[2]](edge_gp2...) * J2A) * τk[2];
+  end
+  return p
 end
 
 const δλ = 0.1;
-const τ = Float64[1000.0; 500.0];
 const X = [0.0 5.0 5.0 0.0; 0.0 2.0 5.0 8.0]; # each column is a position is ref configuration, i.e. X1 = X[:, 1]
+#const X = [-1.0 1.0 1.0 -1.0; -1.0 -1.0 1.0 1.0]; # each column is a position is ref configuration, i.e. X1 = X[:, 1]
 
 #initialize data structures, stress or strains
 
@@ -111,6 +140,7 @@ println("Loading parameters...");
 println("=========================");
 println("δλ    = ", δλ);
 println("τ     = ", τ);
+println("P     = \n", P());
 println();
 
 println("Initial guess...");
