@@ -5,7 +5,7 @@ const νstar = ν / (1 - ν);
 const C_SE = Eystar / (1 - νstar^2) * Float64[1.0 νstar 0.0; νstar 1.0 0.0; 0.0 0.0 (1 - νstar) / 2.0];
 
 function S(E::Matrix{Float64})
-  return C_SE * E;
+  return C_SE * [E[1, 1]; E[2, 2]; E[1, 2]];
 end
 
 const GP = 1.0 / sqrt(3) * [-1.0; 1.0];
@@ -48,6 +48,10 @@ function Fξ(ξ::Real, η::Real, y::Matrix{Float64})
   return retval;
 end
 
+function umat(u::Vector{Float64})
+  return [u[1] u[2]; u[3] u[4]; u[5] u[6]; u[7] u[8]];
+end
+
 function J(ξ::Real, η::Real, y::Matrix{Float64})
   return det(Fξ(ξ, η, y));
 end
@@ -60,7 +64,7 @@ function ∇N(ξ::Real, η::Real, y::Matrix{Float64})
 end
 
 function ∇u(ξ::Real, η::Real, y::Matrix{Float64}, u::Vector{Float64})
-  return u * (∇N(ξ, η, y))';
+  return (∇N(ξ, η, y)) * umat(u);
 end
 
 function E(ξ::Real, η::Real, X::Matrix{Float64}, u::Vector{Float64})
@@ -70,7 +74,7 @@ end
 
 function B0(ξ::Real, η::Real, X::Matrix{Float64}, u::Vector{Float64})
   ∇N_ = ∇N(ξ, η, X);
-  F_ = u * (∇N_') + eye(2, 2);
+  F_ = ∇N_ * umat(u) + eye(2, 2);
   B0s = map(k -> begin
         ([F_[1, 1]*∇N_[1, k] F_[2, 1]*∇N_[1, k];
           F_[1, 2]*∇N_[2, k] F_[2, 2]*∇N_[2, k];
@@ -80,7 +84,14 @@ function B0(ξ::Real, η::Real, X::Matrix{Float64}, u::Vector{Float64})
 end
 
 function I(X::Matrix{Float64}, u::Vector{Float64})
-  return gauss_quad((ξ::Real, η::Real) -> (B0(ξ, η, X, u))' * S(E(ξ, η, X, u)) * J(ξ, η, X));
+  integrand = 0.0;
+  for i=1:2, j=1:2
+    ξ = GP[i];
+    η = GP[j];
+    B0_ = B0(ξ, η, X, u);
+    integrand += B0_' * S(E(ξ, η, X, u)) * J(ξ, η, X) * GW[i] * GW[j];
+  end
+  return integrand;
 end
 
 const τ = Float64[0.0 0.0; 1000.0 500.0; 0.0 0.0; 0.0 0.0]';
@@ -92,11 +103,11 @@ const edge_normals = [0.0 -1.0; 1.0 0.0; 0.0 1.0; -1.0 0.0]';
 function P(X::Matrix{Float64})
   p = zeros(8, 1);
   for k=1:4 
-    edge_idx = sub(edge_idxs, :, k);
-    edge_gp1 = sub(edge_gps1, :, k);
-    edge_gp2 = sub(edge_gps2, :, k);
-    τk = sub(τ, :, k);
-    edge_normal = sub(edge_normals, :, k);
+    edge_idx = view(edge_idxs, :, k);
+    edge_gp1 = view(edge_gps1, :, k);
+    edge_gp2 = view(edge_gps2, :, k);
+    τk = view(τ, :, k);
+    edge_normal = view(edge_normals, :, k);
 
     F1 = Fξ(edge_gp1[1], edge_gp1[2], X);
     J1A = det(F1) * norm(inv(F1)' * edge_normal, 2);
@@ -155,15 +166,15 @@ function Kgeom(X::Matrix{Float64}, u::Vector{Float64})
   return integrand;
 end
 
-const δλ = 0.1;
+const δλ = 0.0001;
 const X0 = [0.0 5.0 5.0 0.0; 0.0 2.0 5.0 8.0]; # each column is a position is ref configuration, i.e. X1 = X[:, 1]
 #const X = [-1.0 1.0 1.0 -1.0; -1.0 -1.0 1.0 1.0]; # each column is a position is ref configuration, i.e. X1 = X[:, 1]
 
 #initialize data structures, stress or strains
 
 #define initial guess
-const ϵ_u0 = 1e-3;
-const u0 = ϵ_u0 * [0.0 0.0 1.0 1.0; 0.0 0.0 0.5 0.5];
+const ϵ_u0 = 0.0;
+const u0 = ϵ_u0 * [0.0; 0.0; 1.0; 0.5; 1.0; 0.5; 0.0; 0.0];
 
 println("Program initialization...");
 println("=========================");
@@ -172,13 +183,13 @@ println("ν     = ", ν);
 println("Ey*   = ", Eystar);
 println("ν*    = ", νstar);
 println("C_SE  = \n", C_SE);
-println("X     = \n", X);
+println("X     = \n", X0);
 println();
 
 println("Loading parameters...");
 println("=========================");
 println("δλ    = ", δλ);
-println("τ     = ", τ);
+println("τ     = \n", τ);
 const P0 = P(X0);
 println("P     = \n", P0);
 println();
@@ -188,7 +199,7 @@ println("=========================");
 println("u0    = \n", u0);
 println();
 
-const max_iter = 100;
+const max_iter = 40;
 const δ = 1e-6;
 println("Newton-Raphson parameters...");
 println("=========================");
@@ -210,15 +221,32 @@ for λ = 0.0:δλ:1.0
   println("Loading step... λ = ", λ);
   println("Pext              = ", Pext);
   
-  R02 = norm(I(X0, uk) - Pext, 2); 
-  for k = 1:max_iter
-    Ik = I(X0, uk);
-    Ak = Kmat(X0, uk) + Kgeom(X0, u);
-    Rk = I(X0, uk) - Pext;
+  R02 = norm(I(X0, uk) - Pext, 2);
+  if R02 != 0.0
+    println("k    | u3   u4   u5   u6 | Rk3    Rk4    Rk5    Rk6");
+    println("=============================================================");
+    for k = 1:max_iter
+      Ik = I(X0, uk);
+      Rk = Ik - Pext;
 
-    ϵ = norm(Rk, 2) / R02;
-    if 
+      @printf("%4d %.2lf %.2lf %.2lf %.2lf %.2lf %.2lf %.2lf %.2lf\n",
+               k, uk[3], uk[4], uk[5], uk[6], Rk[3], Rk[4], Rk[5], Rk[6]);
+      if (norm(Rk, 2) / R02 < δ) 
+        break;
+      end
 
-    Δu = Ak \ -Rk;
+      Ak = Kmat(X0, uk) + Kgeom(X0, uk);
+      Δu = Ak \ -Rk;
+      
+      uk += vec(Δu);
+
+      uk[1] = 0.0;
+      uk[2] = 0.0;
+      uk[7] = 0.0;
+      uk[8] = 0.0;
+    end
+  else
+    println("Initial guess was correct.");
   end
+  println();
 end
