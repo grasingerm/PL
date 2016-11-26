@@ -20,14 +20,49 @@ B11(ξ, η) = -0.25 * (1.0 - η);
 B21(ξ, η) = 0.25 * (1.0 - η);
 B31(ξ, η) = 0.25 * (1.0 + η);
 B41(ξ, η) = -0.25 * (1.0 + η);
+
 B12(ξ, η) = -0.25 * (1.0 - ξ);
 B22(ξ, η) = -0.25 * (1.0 + ξ);
 B32(ξ, η) = 0.25 * (1.0 + ξ);
 B42(ξ, η) = 0.25 * (1.0 - ξ);
 
+BZ1(ξ, η) = 0.25*[(η-1); (1-ξ)];
+BZ2(ξ, η) = 0.25*[(1-η); (ξ-1)];
+BZ3(ξ, η) = 0.25*[(η+1); (1+ξ)];
+BZ4(ξ, η) = 0.25*[(-1-η); (1-ξ)];
+BZ = [BZ1; BZ2; BZ3; BZ4];
+
+const X0 = [0.0 5.0 5.0 0.0; 0.0 2.0 5.0 8.0]; # each column is a position is ref configuration, i.e. X1 = X[:, 1]
 const N_ = [N1; N2; N3; N4];
 const B_ = [B11 B21 B31 B41;
             B12 B22 B32 B42];
+
+            #=
+function Fξ(ξ::Real, η::Real, y::Matrix{Float64})
+  retval = zeros(2, 2);
+  for k=1:4
+    retval += y[:, k] * BZ[k](ξ, η)'
+  end
+  return retval;
+end
+
+function B0I(ξ::Real, η::Real)
+  Fξi = inv(Fξ(ξ, η, X0));
+  B0_ = Fξi*(BZ[1](ξ, η));
+  @show Fξi, B0_
+  for k=2:4
+    hcat(B0_, Fξi*(BZ[k](ξ, η)));
+  end
+  return B0_;
+end
+
+function B0(ξ::Real, η::Real)
+  B0I_ = B0I(ξ, η);
+  return [B0I_[1, 1] 0.0 B0I_[1, 2] 0.0 B0I_[1, 3] 0.0 B0I_[1, 4] 0.0;
+          0.0 B0I_[2, 1] 0.0 B0I_[2, 2] 0.0 B0I_[2, 3] 0.0 B0I_[2, 4];
+          B0I_[1, 1] B0I_[2, 1] B0I_[1, 2] B0I_[2, 2] B0I_[1, 3] B0I_[2, 3] B0I_[1, 4] B0I_[2, 4]];
+end
+=#
 
 function N(ξ::Real, η::Real)
   return [N1(ξ, η) 0.0 N2(ξ, η) 0.0 N3(ξ, η) 0.0 N4(ξ, η) 0.0;
@@ -48,23 +83,26 @@ function Fξ(ξ::Real, η::Real, y::Matrix{Float64})
   return retval;
 end
 
-function umat(u::Vector{Float64})
-  return [u[1] u[2]; u[3] u[4]; u[5] u[6]; u[7] u[8]];
-end
-
 function J(ξ::Real, η::Real, y::Matrix{Float64})
   return det(Fξ(ξ, η, y));
 end
 
 # [N1,y1 N2,y1 N3,y1 N4,y1; N1,y2 N2,y2 N3,y2 N4,y2]
-function ∇N(ξ::Real, η::Real, y::Matrix{Float64})
+function ∇N(ξ::Real, η::Real, y::Matrix{Float64}, k::Int)
   FyiT = (inv(Fξ(ξ, η, y)))';
-  return FyiT * [B11(ξ, η) B21(ξ, η) B31(ξ, η) B41(ξ, η);
-                 B12(ξ, η) B22(ξ, η) B32(ξ, η) B42(ξ, η)];
+  return FyiT * [B_[1, k](ξ, η); B_[2, k](ξ, η)];
 end
 
 function ∇u(ξ::Real, η::Real, y::Matrix{Float64}, u::Vector{Float64})
-  return (∇N(ξ, η, y)) * umat(u);
+  ∇u_ = zeros(2, 2);
+  for k=1:4
+    ∇N_ = ∇N(ξ, η, y, k);
+    ∇u_[1, 1] += ∇N_[1] * u[2 * k - 1];
+    ∇u_[1, 2] += ∇N_[2] * u[2 * k - 1];
+    ∇u_[2, 1] += ∇N_[1] * u[2 * k];
+    ∇u_[2, 2] += ∇N_[2] * u[2 * k];
+  end
+  return ∇u_;
 end
 
 function E(ξ::Real, η::Real, X::Matrix{Float64}, u::Vector{Float64})
@@ -73,12 +111,12 @@ function E(ξ::Real, η::Real, X::Matrix{Float64}, u::Vector{Float64})
 end
 
 function B0(ξ::Real, η::Real, X::Matrix{Float64}, u::Vector{Float64})
-  ∇N_ = ∇N(ξ, η, X);
-  F_ = ∇N_ * umat(u) + eye(2, 2);
+  F_ = ∇u(ξ, η, X, u) + eye(2, 2);
   B0s = map(k -> begin
-        ([F_[1, 1]*∇N_[1, k] F_[2, 1]*∇N_[1, k];
-          F_[1, 2]*∇N_[2, k] F_[2, 2]*∇N_[2, k];
-          F_[1, 1]*∇N_[2, k]+F_[1, 2]*∇N_[1, k] F_[2, 2]*∇N_[1, k]+F_[2, 1]*∇N_[2, k]])
+        ∇Nk = ∇N(ξ, η, X, k);
+        return ([F_[1, 1]*∇Nk[1] F_[2, 1]*∇Nk[1];
+                 F_[1, 2]*∇Nk[2] F_[2, 2]*∇Nk[2];
+                 F_[1, 1]*∇Nk[2]+F_[1, 2]*∇Nk[1] F_[2, 2]*∇Nk[1]+F_[2, 1]*∇Nk[2]])
         end, 1:4);
   return hcat(B0s...); 
 end
@@ -133,18 +171,18 @@ function Kmat(X::Matrix{Float64}, u::Vector{Float64})
     ξ = GP[i];
     η = GP[j];
     B0_ = B0(ξ, η, X, u);
-    integrand += B0_' * C_SE * B0_ * GW[i] * GW[j];
+    integrand += B0_' * C_SE * B0_ * GW[i] * GW[j] * J(ξ, η, X);
   end
   return integrand;
 end
 
 function Bgeom(ξ::Real, η::Real, X::Matrix{Float64})
-  ∇N_ = ∇N(ξ, η, X);
   Bgeoms = map(k -> begin
-               ([∇N_[1, k] 0.0;
-                 ∇N_[2, k] 0.0;
-                 0.0 ∇N_[1, k];
-                 0.0 ∇N_[2, k];])
+               ∇Nk = ∇N(ξ, η, X, k);
+               ([∇Nk[1] 0.0;
+                 ∇Nk[2] 0.0;
+                 0.0 ∇Nk[1];
+                 0.0 ∇Nk[2];])
         end, 1:4);
   return hcat(Bgeoms...);
 end
@@ -161,13 +199,41 @@ function Kgeom(X::Matrix{Float64}, u::Vector{Float64})
     η = GP[j];
     Bgeom_ = Bgeom(ξ, η, X);
     Sbar_ = Sbar(S(E(ξ, η, X, u)));
-    integrand += Bgeom_' * Sbar_ * Bgeom_ * GW[i] * GW[j];
+    integrand += Bgeom_' * Sbar_ * Bgeom_ * GW[i] * GW[j] * J(ξ, η, X);
   end
   return integrand;
 end
 
+#=
+function KT(X::Matrix{Float64}, u::Vector{Float64})
+  for i=1:2, j=1:2
+    ξ = GP[i];
+    η = GP[j];
+    
+    N = 1/4*[(1-ξ)*(1-η), (1+ξ)*(1-η), (1+ξ)*(1+η), (1-ξ)*(1+η)];
+    dNdxi = 1/4*[(η-1), (1-η), (1+η), (-1-η)];
+    dNdeta = 1/4*[(ξ-1), (-1-ξ), (1+ξ), (1-ξ)];
+    
+    J = vcat(dNdxi, dNdeta) * X0';
+    Dummy = inv(J) * vcat(dNdxi, dNdeta);
+    dNdx = Dummy[1, :];
+    dNdy = Dummy[2, :];
+    Bl = [dNdx 0 0 0 0; 0 0 0 0 dNdy; dNdy dNdx];
+    G1 = [dNdx 0 0 0 0; 0 0 0 0 dNdx];
+    G2 = [dNdy 0 0 0 0; 0 0 0 0 dNdy];
+    G = vcat(G1, G2);
+
+    θ1 = G1 * u;
+    θ2 = G2 * u;
+    A = [θ1' 0 0; 0 0 θ2'; θ2' θ1'];
+    Bnl = A*G;
+    Bhat = Bl + Bnl;
+    Ms = [S
+  end
+end
+=#
+
 const δλ = 0.0001;
-const X0 = [0.0 5.0 5.0 0.0; 0.0 2.0 5.0 8.0]; # each column is a position is ref configuration, i.e. X1 = X[:, 1]
 #const X = [-1.0 1.0 1.0 -1.0; -1.0 -1.0 1.0 1.0]; # each column is a position is ref configuration, i.e. X1 = X[:, 1]
 
 #initialize data structures, stress or strains
@@ -207,12 +273,24 @@ println("maximum number of iterations = ", max_iter);
 println("error tolerance, δ           = ", δ);
 println();
 
+X_test = [0.0 2.0 2.0 0.0; 0.0 0.0 4.0 4.0];
+u_test = [0.0; 0.0; 0.0; 0.0; 4.0; 0.0; 4.0; 0.0];
 for ξ = 0.0:0.1:1.0, η = 0.0:0.1:1.0
   sum = 0.0;
   for k = 1:4
     sum += N_[k](ξ, η);
   end
   @assert(abs(sum - 1.0) < 1e-9)
+  ∇u_ = ∇u(ξ, η, X_test, u_test);
+  F_ = ∇u_ + eye(2, 2);
+  @assert(abs(∇u_[1, 1] - 0.0) < 1e-9);
+  @assert(abs(∇u_[1, 2] - 1.0) < 1e-9);
+  @assert(abs(∇u_[2, 1] - 0.0) < 1e-9);
+  @assert(abs(∇u_[2, 2] - 0.0) < 1e-9);
+  @assert(abs(F_[1, 1] - 1.0) < 1e-9);
+  @assert(abs(F_[1, 2] - 1.0) < 1e-9);
+  @assert(abs(F_[2, 1] - 0.0) < 1e-9);
+  @assert(abs(F_[2, 2] - 1.0) < 1e-9);
 end
 
 uk = u0;
@@ -237,6 +315,11 @@ for λ = 0.0:δλ:1.0
 
       Ak = Kmat(X0, uk) + Kgeom(X0, uk);
       Δu = Ak \ -Rk;
+
+      @show Kmat(X0, uk);
+      @show Kgeom(X0, uk);
+      @show Ak;
+      @show Δu;
       
       uk += vec(Δu);
 
