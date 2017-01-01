@@ -13,7 +13,7 @@ function Ke(xs::Matrix{Float64}, δ::Real)
       Je = J(xs, ξ, η);
       @assert(abs(Je - 1.0 / (pa["nx"] * pa["ny"] * 4.0)) < 1e-12, "poop");
       @assert(Je > 0.0, "Jacobian determinant must be positive");
-      return (dot(∇Ni, ∇Nj) - N[i](ξ, η)*N[j](ξ, η) / δ) * J(xs, ξ, η);
+      return (-dot(∇Ni, ∇Nj) - N[i](ξ, η)*N[j](ξ, η) / δ) * J(xs, ξ, η);
     end)
   end
   return K;
