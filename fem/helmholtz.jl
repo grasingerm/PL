@@ -55,9 +55,88 @@ s = ArgParseSettings();
   "--print", "-t"
     help = "Print K, f, and u"
     action = :store_true
+  "--test-int-funcs", "-I"
+    help = "Test interpolation functions"
+    action = :store_true
+  "--plot-int-funcs", "-P"
+    help = "Plot interpolation functions"
+    action = :store_true
 end
 
 pa = parse_args(s);
+
+if pa["test-int-funcs"]
+  println("Running interpolation function tests...");
+
+  approx_eq(a, b) = (abs(a - b) < 1e-9);
+  @assert(approx_eq(N1(-1, -1), 1.0));
+  @assert(approx_eq(N1(1, -1),  0.0));
+  @assert(approx_eq(N1(1, 1),   0.0));
+  @assert(approx_eq(N1(-1, 1),  0.0));
+
+  @assert(approx_eq(N2(-1, -1), 0.0));
+  @assert(approx_eq(N2(1, -1),  1.0));
+  @assert(approx_eq(N2(1, 1),   0.0));
+  @assert(approx_eq(N2(-1, 1),  0.0));
+
+  @assert(approx_eq(N3(-1, -1), 0.0));
+  @assert(approx_eq(N3(1, -1),  0.0));
+  @assert(approx_eq(N3(1, 1),   1.0));
+  @assert(approx_eq(N3(-1, 1),  0.0));
+
+  @assert(approx_eq(N4(-1, -1), 0.0));
+  @assert(approx_eq(N4(1, -1),  0.0));
+  @assert(approx_eq(N4(1, 1),   0.0));
+  @assert(approx_eq(N4(-1, 1),  1.0));
+
+  for x in rand(-1.0:1e-6:1.0, 1000), y in rand(-1.0:1e-6:1.0, 1000)
+    sum = 0.0;
+    for i = 1:4
+      sum += N[i](x, y);
+    end
+    @assert(approx_eq(sum, 1.0));
+  end
+end
+
+if pa["plot-int-funcs"]
+  xs  = zeros(100 * 100);
+  ys  = zeros(100 * 100);
+  n1s = zeros(100 * 100);
+  n2s = zeros(100 * 100);
+  n3s = zeros(100 * 100);
+  n4s = zeros(100 * 100);
+
+  idx = 1;
+  for x in linspace(-1.0, 1.0, 100), y in linspace(-1.0, 1.0, 100)
+    xs[idx] = x;
+    ys[idx] = y;
+    n1s[idx] = N1(x, y);
+    n2s[idx] = N2(x, y);
+    n3s[idx] = N3(x, y);
+    n4s[idx] = N4(x, y);
+    idx += 1;
+  end
+
+  surf(xs, ys, n1s);
+  title("N1");
+  show();
+  clf();
+
+  surf(xs, ys, n2s);
+  title("N2");
+  show();
+  clf();
+
+  surf(xs, ys, n3s);
+  title("N3");
+  show();
+  clf();
+
+  surf(xs, ys, n4s);
+  title("N4");
+  show();
+  clf();
+end
 
 gdofs, gcoords = mesh_rectangle(0.0, 1.0, 0.0, 1.0, pa["nx"], pa["ny"]);
 const nelems = size(gdofs, 2);
