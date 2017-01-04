@@ -72,7 +72,7 @@ function J(xs::Matrix{Float64}, ξ::Real, η::Real)
               N1ξ(ξ, η) N2ξ(ξ, η) N3ξ(ξ, η) N4ξ(ξ, η); 
               N1η(ξ, η) N2η(ξ, η) N3η(ξ, η) N4η(ξ, η)
              ];
-  return det(N_ * xs);
+  return N_ * xs;
 end
 
 function xse(gdofs::Matrix{Int}, gcoords::Matrix{Float64}, elemidx::Int)
