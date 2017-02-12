@@ -36,9 +36,9 @@ function plot_transform_3d(u::Vector{Float64}, A::Matrix{Float64};
   if plot_eigvecs
     D, V = eig(A);
     println("λ = \n$D");
-    plot_vec_2d(map(x -> real(x), V[:, 1]); label="\$\\psi_1\$");
-    plot_vec_2d(map(x -> real(x), V[:, 2]); label="\$\\psi_2\$");
-    plot_vec_2d(map(x -> real(x), V[:, 3]); label="\$\\psi_3\$");
+    plot_vec_3d(map(x -> real(x), V[:, 1]); label="\$\\psi_1\$");
+    plot_vec_3d(map(x -> real(x), V[:, 2]); label="\$\\psi_2\$");
+    plot_vec_3d(map(x -> real(x), V[:, 3]); label="\$\\psi_3\$");
   end
   legend();
   xlim([-scale, scale]);
@@ -61,4 +61,17 @@ end
 
 function rotation_matrix_z(theta::Real)
   return [cos(theta) sin(theta) 0.0; -sin(theta) cos(theta) 0.0; 0.0 0.0 1.0; ];
+end
+
+function exp_map(S::Matrix{Float64})
+  D, V = eig(S);
+  col = 0;
+  for i=1:size(D,1)
+    if abs(D[i]) < 1e-9
+      col = i;
+    end
+  end
+  θ = vec(V[:, col]);
+  nθ = norm(θ, 2);
+  return eye(size(S)...) + sin(nθ) / nθ * S + 0.5 * (sin(0.5 * nθ))^2/(0.5*nθ)^2 * S * S;
 end
