@@ -108,6 +108,7 @@ for steps in [10; 25; 250; 1000]
   plot(ts, xs; label="x(t)") 
   plot(ts, ys; label="y(t)");
   legend();
+  title("Forward Euler, h = $(ts[2]-ts[1])");
   savefig("fe_$steps.png");
   clf();
 end
@@ -117,6 +118,7 @@ for steps in [10; 25; 250; 1000]
   plot(ts, xs; label="x(t)"); 
   plot(ts, ys; label="y(t)");
   legend();
+  title("Backward Euler, h = $(ts[2]-ts[1])");
   savefig("be_$steps.png");
   clf();
 end
@@ -127,6 +129,7 @@ plot(ts1, xs1; label="x(t), forward");
 plot(ts1, ys1; label="y(t), forward");
 plot(ts2, xs2; label="x(t), back"); 
 plot(ts2, ys2; label="y(t), back");
+title("h = $(ts1[2]-ts1[1])");
 legend();
 savefig("compare_250.png");
 clf();
@@ -140,6 +143,7 @@ plot(ts1, xs1; label="x(t), forward");
 plot(ts1, ys1; label="y(t), forward");
 plot(tsrk, xsrk; label="x(t), RK2"); 
 plot(tsrk, ysrk; label="y(t), RK2");
+title("h = $(ts1[2]-ts1[1])");
 legend();
 savefig("compare_fe-rk2_1000.png");
 clf();
@@ -151,4 +155,5 @@ dfy_vdp(x, y, t) = mu * (1 - x*x) * y - x;
 
 ts, xs, ys = runge_kutta_2(dfx_vdp, 5.0, dfy_vdp, 2.0, 0.0, 100.0, 10000);
 plot(xs, ys);
+title("RK2 approximation of Van der Pol oscillator");
 savefig("rk2.png");
