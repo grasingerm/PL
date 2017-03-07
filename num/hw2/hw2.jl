@@ -105,29 +105,36 @@ dfx(x, y, t) = eps * x - y;
 dfy(x, y, t) = x + eps * y;
 for steps in [10; 25; 250; 1000]
   ts, xs, ys = forward_euler(dfx, 1.0, dfy, 0.0, 0.0, 10.0, steps);
-  plot(ts, xs; label="x(t)") 
-  plot(ts, ys; label="y(t)");
-  legend();
+  #plot(ts, xs; label="x(t)") 
+  #plot(ts, ys; label="y(t)");
+  scatter(xs, ys);
+  #legend();
+  title("Forward Euler, h = $(10.0 / steps)");
   savefig("fe_$steps.png");
   clf();
 end
 
 for steps in [10; 25; 250; 1000]
   ts, xs, ys = backward_euler(dfx, 1.0, dfy, 0.0, 0.0, 10.0, steps);
-  plot(ts, xs; label="x(t)"); 
-  plot(ts, ys; label="y(t)");
-  legend();
+  #plot(ts, xs; label="x(t)"); 
+  #plot(ts, ys; label="y(t)");
+  #legend();
+  scatter(xs, ys);
+  title("Backward Euler, h = $(10.0 / steps)");
   savefig("be_$steps.png");
   clf();
 end
 
 ts1, xs1, ys1 = forward_euler(dfx, 1.0, dfy, 0.0, 0.0, 10.0, 250);
 ts2, xs2, ys2 = backward_euler(dfx, 1.0, dfy, 0.0, 0.0, 10.0, 250);
-plot(ts1, xs1; label="x(t), forward"); 
-plot(ts1, ys1; label="y(t), forward");
-plot(ts2, xs2; label="x(t), back"); 
-plot(ts2, ys2; label="y(t), back");
-legend();
+#plot(ts1, xs1; label="x(t), forward"); 
+#plot(ts1, ys1; label="y(t), forward");
+#plot(ts2, xs2; label="x(t), back"); 
+#plot(ts2, ys2; label="y(t), back");
+scatter(xs1, ys1; marker="x")
+scatter(xs2, ys2; marker="o");
+legend(["forward"; "backward"]);
+title("Foward and Backward Euler, h = $(10.0 / 250)");
 savefig("compare_250.png");
 clf();
 
@@ -136,11 +143,15 @@ ts1, xs1, ys1 = forward_euler(dfx, 1.0, dfy, 0.0, 0.0, 10.0, 1000);
 tsrk, xsrk, ysrk = runge_kutta_2(dfx, 1.0, dfy, 0.0, 0.0, 10.0, 1000);
 println("||x_fe - x_rk2|| / ||x_fe|| = $(norm(xs1 - xsrk, 2) / norm(xs1, 2))");
 println("||y_fe - y_rk2|| / ||y_fe|| = $(norm(ys1 - ysrk, 2) / norm(ys1, 2))");
-plot(ts1, xs1; label="x(t), forward"); 
-plot(ts1, ys1; label="y(t), forward");
-plot(tsrk, xsrk; label="x(t), RK2"); 
-plot(tsrk, ysrk; label="y(t), RK2");
+#plot(ts1, xs1; label="x(t), forward"); 
+#plot(ts1, ys1; label="y(t), forward");
+#plot(tsrk, xsrk; label="x(t), RK2"); 
+#plot(tsrk, ysrk; label="y(t), RK2");
 legend();
+scatter(xs1, ys1; marker="x");
+scatter(xsrk, ysrk; marker="o");
+legend(["Forward", "Runge Kutta"]);
+title("Foward Euler and Runge Kutta, h = $(10.0 / 1000)");
 savefig("compare_fe-rk2_1000.png");
 clf();
 
