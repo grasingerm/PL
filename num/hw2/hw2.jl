@@ -162,4 +162,5 @@ dfy_vdp(x, y, t) = mu * (1 - x*x) * y - x;
 
 ts, xs, ys = runge_kutta_2(dfx_vdp, 5.0, dfy_vdp, 2.0, 0.0, 100.0, 10000);
 plot(xs, ys);
+title("RK2 approximation of Van der Pol oscillator");
 savefig("rk2.png");
