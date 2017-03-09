@@ -17,15 +17,17 @@ function trap(f::Function, x0::Real, x1::Real, npts::Int)
   return h * sum;
 end
 
+dirac_approx(x0::Real, x::Real, a::Real) = sin((x - x0) * a) / (pi * (x - x0));
+
 a = 1.0;
 xs = linspace(-dx, dx, npts);
 for iteration = 1:nk
-  plot(xs, map(x -> sin(x*a)/(2*pi*x), xs));
+  plot(xs, map(x -> dirac_approx(k, x, a), xs));
   title("\$k = $k, a = 10^{$(convert(Int, round(log(10, a))))}\$");
   draw();
   PyPlot.pause(2.0);
   if integrate
-    println("integration => $(trap(x -> sin(x*a)/(pi*x), -dx, dx, npts))");
+    println("integration => $(trap(x -> dirac_approx(k, x, a), -dx, dx, npts))");
   end
   clf();
   a *= 10.0;
