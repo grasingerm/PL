@@ -1,3 +1,4 @@
+ccall(:jl_exit_on_sigint, Void, (Cint,), 0); # Allows Ctrl+C to be caught
 using PyPlot;
 PyPlot.ioff();
 
