@@ -14,6 +14,7 @@ function kawasaki(u0::Real, u1::Real, beta::Real)
 end
 
 using ArgParse;
+using PyPlot;
 
 s = ArgParseSettings();
 @add_arg_table s begin
@@ -45,6 +46,9 @@ s = ArgParseSettings();
     help = "element size"
     arg_type = Float64
     default = 0.1
+  "--plot-histogram", "-p"
+    help = "Plot histogram of positions"
+    action = :store_true
 end
 
 pa = parse_args(s);
@@ -67,8 +71,10 @@ counter = 0;
 x = x0;
 u = harmonic_potential(k, x);
 
+xs = (pa["plot-histogram"]) ? zeros(nsteps) : zeros(1);
+
 for step = 1:nsteps
-  xtrial = x + rand([-delta; delta]);
+  xtrial = x + rand(-delta:1e-9:delta);
   utrial = harmonic_potential(k, xtrial);
   if acc_func(u, utrial, beta)
     x = xtrial;
@@ -80,16 +86,37 @@ for step = 1:nsteps
   if x > x0 - dx && x < x0 + dx
     counter += 1;
   end
+  if pa["plot-histogram"]
+    xs[step] = x;
+  end
 end
 
 exp_x = xsum / nsteps;
 exp_xsq = xsqsum / nsteps;
 px0 = counter / nsteps;
-Z = exp(-beta * harmonic_potential(k, x0)) / px0 / 2;
+Z_an = (sqrt(2 * pi / (beta * k)));
+exp_x0 = counter / (nsteps * 2 * dx);
+Z1 = exp(-beta * harmonic_potential(k, x0)) / exp_x0;
 println("<x>    =   $(exp_x)");
 println("<x^2>  =   $(exp_xsq)");
 println("Δx     =   $(sqrt(exp_xsq - exp_x^2))");
 println("<E>    =   $(esum / nsteps)");
 println("1/2β   =   $(1 / (2*beta))");
-println("Z      =   $Z");
-println("Z (an) =   $(sqrt(2 * pi / (beta * k)))");
+println("Z      =   $Z1");
+println("Z (an) =   $Z_an");
+
+println("< δ(x - x0) > = $exp_x0");
+
+if pa["plot-histogram"]
+  plt[:hist](xs, 25; normed=true, facecolor="cyan");
+  x_min, x_max = minimum(xs), maximum(xs);
+  xline = linspace(x_min, x_max, 100);
+  PyPlot.plot(xline, 
+              map(x -> exp(-beta * harmonic_potential(k, x)) / Z_an, xline),
+             "k--"; linewidth=8);
+  legend(["MCMC", "Analytical"]);
+  xlabel("\$x\$");
+  ylabel("\$P(x)\$");
+  title("Harmonic Oscillator, probability density of \$x\$");
+  show();
+end
