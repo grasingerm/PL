@@ -65,6 +65,10 @@ s = ArgParseSettings();
     help = "element size"
     arg_type = Float64
     default = 0.1
+  "--Chi", "-C"
+    help = "susceptibility tensor"
+    arg_type = AbstractString
+    default = "[1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0]"
 end
 
 pa = parse_args(s); 
@@ -73,7 +77,7 @@ const p0 = [pa["p0_x"]; pa["p0_y"]; pa["p0_z"]];
 const E0 = [pa["E0_x"]; pa["E0_y"]; pa["E0_z"]];
 const beta = pa["beta"];
 const nsteps = pa["num-steps"];
-chi = 0.5 * [1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0];
+chi = eval(parse(pa["Chi"]));
 inv_chi = inv(chi);
 acc_func = eval(parse(pa["accept"]));
 const delta = pa["delta"];
