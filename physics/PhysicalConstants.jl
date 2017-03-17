@@ -21,6 +21,7 @@ module PhysicalConstants
   # masses of elementary particles
   const me = 9.10938291e-31;
   const mp = 1.672621777e-27;
+  const mn = 1.674927471e-27;
 
   const F = NA * eC;
   const atm = 101325;
