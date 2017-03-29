@@ -53,7 +53,7 @@ for h in [1./10.; 1./20.; 1./40.]
 
   for n in 1:length(ts)-1
     for m in 2:length(xs)-1
-      us[m, n+1] = us[m, n] - lambda * (us[m, n] - us[m-1, n]);
+      us[m, n+1] = us[m, n] - lambda * (us[m+1, n] - us[m-1, n]);
     end
     us[end, n+1] = us[end-1, n+1];
   end
