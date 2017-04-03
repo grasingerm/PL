@@ -25,6 +25,8 @@ function plot_solution(xs, ts, us::Matrix{Float64}; t::String="",
   clf();
 end
 
+test_with_gauss_elim = true;
+
 for h in [1/10; 1/20; 1/40]
   const k = λ * h;
   const aa = -a * λ / 4;
@@ -37,26 +39,50 @@ for h in [1/10; 1/20; 1/40]
 
   u = zeros(M, K);
   u[:, 1] = map(x -> sin(π * x), xs);
+  # used for debugging
+  u_debug = (test_with_gauss_elim) ? zeros(M, K) : zeros(1, 1);
+  if test_with_gauss_elim
+    u_debug[:, 1] = map(x -> sin(π * x), xs);
+  end
 
   for n in 1:K-1
+    # used for debugging
+    A_debug = (test_with_gauss_elim) ? zeros(M, M) : zeros(1, 1);
+    b_debug = (test_with_gauss_elim) ? zeros(M) : zeros(1);
+    if test_with_gauss_elim
+      A_debug[1, 1] = 1.0;
+      b_debug[1] = sin(π * (-1 - ts[n+1]));
+      for m=2:M-1
+        A_debug[m, m-1] = aa;
+        A_debug[m, m] = bb;
+        A_debug[m, m+1] = cc;
+        b_debug[m] = u_debug[m, n] - cc * u_debug[m+1, n] - aa * u_debug[m-1, n];
+      end
+      A_debug[M, M-1] = -λ;
+      A_debug[M, M] = 1+λ;
+      b_debug[M] = u_debug[M, n];
+    end
+
     # calculate pi and qi for Thomas' algorithm
     p = zeros(M);
     q = zeros(M);
-    p[1], q[1] = 0.0, sin(π * (-1 - ts[n]));
-    for m in 2:M-1
+    p[2], q[2] = 0.0, sin(π * (-1 - ts[n+1]));
+    for m=2:M-1
       dd = u[m, n] - a * λ * (u[m+1, n] - u[m-1, n]) / 4;
-      denom = aa * p[m-1] + bb;
-      p[m] =  -cc / denom;
-      q[m] = (dd - aa * q[m-1]) / denom;
+      denom = aa * p[m] + bb;
+      p[m+1] =  -cc / denom;
+      q[m+1] = (dd - aa * q[m]) / denom;
     end
-    #dd = u[M, n];
-    #denom = -λ * p[M-1] + bb
-    u[M, n+1] = u[M-1, n];
-    for m in M-1:-1:2
-      u[m, n+1] = p[m] * u[m+1, n] + q[m];
+    u[M, n+1] = (u[M, n] + q[M]*λ) / (1 + λ - p[M]*λ);
+    for m=M-1:-1:1
+      u[m, n+1] = p[m+1] * u[m+1, n+1] + q[m+1];
     end
-    u[1, n] = sin(π * (-1 - ts[n]));
+    u_debug[:, n+1] = A_debug \ b_debug;
+    @show norm(u[:, n+1] - u_debug[:, n+1], Inf);
   end
 
-  plot_solution(xs, ts, u; t="Crank-Nicolson, \$h = $h\$", show_plot=true);
+  plot_solution(xs, ts, u; t="Crank-Nicolson, \$h = $h\$", show_plot=false,
+                           fname="cn_thomas_M-$M.png");
+  plot_solution(xs, ts, u_debug; t="Crank-Nicolson, \$h = $h\$", show_plot=false,
+                           fname="cn_gauss_M-$M.png");
 end
