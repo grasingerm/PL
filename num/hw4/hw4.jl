@@ -77,12 +77,17 @@ for h in [1/10; 1/20; 1/40]
     for m=M-1:-1:1
       u[m, n+1] = p[m+1] * u[m+1, n+1] + q[m+1];
     end
-    u_debug[:, n+1] = A_debug \ b_debug;
-    @show norm(u[:, n+1] - u_debug[:, n+1], Inf);
+
+    if test_with_gauss_elim 
+      u_debug[:, n+1] = A_debug \ b_debug;
+      @show norm(u[:, n+1] - u_debug[:, n+1], Inf);
+    end
   end
 
   plot_solution(xs, ts, u; t="Crank-Nicolson, \$h = $h\$", show_plot=false,
                            fname="cn_thomas_M-$M.png");
-  plot_solution(xs, ts, u_debug; t="Crank-Nicolson, \$h = $h\$", show_plot=false,
-                           fname="cn_gauss_M-$M.png");
+  if test_with_gauss_elim
+    plot_solution(xs, ts, u_debug; t="Crank-Nicolson, \$h = $h\$", show_plot=false,
+                             fname="cn_gauss_M-$M.png");
+  end
 end
