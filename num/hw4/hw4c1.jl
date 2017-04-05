@@ -6,9 +6,10 @@ const a = 1.0;
 asoln(x, t) = sin(π * (x - t));
 
 # debugging flag
-const test_with_gauss_elim = true;
+const test_with_gauss_elim = false;
 
 for h in [1/10; 1/20; 1/40]
+  println("Crank-Nicolson, h = $h");
   const k = λ * h;
   const aa = -a * λ / 4;
   const bb = 1.0;
@@ -26,7 +27,7 @@ for h in [1/10; 1/20; 1/40]
     u_debug[:, 1] = map(x -> asoln(x, 0.0), xs);
   end
 
-  for n in 1:K-1
+  @time for n in 1:K-1
     # used for debugging
     A_debug = (test_with_gauss_elim) ? zeros(M, M) : zeros(1, 1);
     b_debug = (test_with_gauss_elim) ? zeros(M) : zeros(1);
@@ -71,4 +72,8 @@ for h in [1/10; 1/20; 1/40]
     plot_solution(xs, ts, u_debug, asoln; t="Crank-Nicolson, \$h = $h\$", 
                   show_plot=false, fname="cn_gauss_M-$M.png");
   end
+  u_a = map(x -> asoln(x, 1.0), xs);
+  println("Relative L2 error:  ", norm(u[:, end] - u_a, 2) / norm(u_a, 2));
+  println("Relative L∞ error:  ", norm(u[:, end] - u_a, Inf) / norm(u_a, Inf));
+  println();
 end
