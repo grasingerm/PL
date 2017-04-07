@@ -15,7 +15,7 @@
 
 	\section{C1: Crank-Nicolson Scheme, Hyperbolic equations} \label{sec:c1}
 	
-	In the figures that follow this brief discussion, the Crank-Nicolson discrete approximation using the Thomas algorithm is plotted against the exact solution for $h = \frac{1}{10}, \frac{1}{20}$ and $\frac{1}{40}$.
+	In the figures that follow this brief discussion, the Crank-Nicolson discrete approximation using the Thomas algorithm applied to the hyperbolic equation, $u_t + u_x = 0$, is plotted against the exact solution for $h = \frac{1}{10}, \frac{1}{20}$ and $\frac{1}{40}$.
 	The relative $L_\infty$ errors at $t = 1.0$ were $0.271$, $0.104$, and $0.045$ for the $h = \frac{1}{10}, \frac{1}{20}$ and $\frac{1}{40}$ approximations, respectively.
 	The error was primarily due to truncation error in the Crank-Nicolson scheme, as opposed to round off error in solution of the tridiagonal linear system of equations using the Thomas algorithm.
 	This conclusion was made by comparing the solution using the Thomas algorithm to another solution using Gaussian elimination with partial pivoting.
