@@ -75,6 +75,10 @@ s = ArgParseSettings();
     help = "Frequency with which to sample for data file"
     arg_type = Int
     default = 25
+  "--output-step", "-O"
+    help = "Frequency with which to output step (% complete)"
+    arg_type = Float64
+    default = 0.1
 end
 
 pa = parse_args(s); 
@@ -92,6 +96,7 @@ const delta = pa["delta"];
 const dx = pa["dx"];
 const dsample = pa["sample-frequency"];
 const write_datafile = pa["write-E-surface"];
+const output_step = Int(round(nsteps * pa["output-step"]));
 
 xsum = zeros(3);
 xsqsum = zeros(3);
@@ -112,6 +117,7 @@ datafile = ((write_datafile) ?
              nothing);
 
 for step = 1:nsteps
+
   choice = rand(1:3);
   xtrial = copy(x);
   xtrial[choice] += rand(-delta:1e-9:delta);
@@ -122,11 +128,13 @@ for step = 1:nsteps
       xtrial[3] += 2*pi;
     end
   end
+
   utrial = potential(xtrial, inv_chi, E0);
   if acc_func(u, utrial, beta)
     x = xtrial;
     u = utrial;
   end
+
   if step % dsample == 0
     nsamples += 1;
     xsum += x;
@@ -143,8 +151,12 @@ for step = 1:nsteps
       for a in x
         write(datafile, "$a,");
       end
-      write(datafile, "$u\n");
+      write(datafile, "$u\n\n");
     end
+  end
+
+  if step % output_step == 0
+    println(step, " / ", nsteps);
   end
 end
 

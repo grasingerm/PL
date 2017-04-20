@@ -1,0 +1,5 @@
+set datafile separator ","
+set dgrid3d n, n
+splot fname using 1:2:3 title "ADI" with points palette pointsize 1 pointtype 7, \
+      fname using 1:2:4 title "Exact" with lines lw 1
+pause -1

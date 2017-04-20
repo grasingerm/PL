@@ -1,4 +1,6 @@
 set datafile separator ","
-splot fname using 1:2:3 title "ADI" with points palette pointsize 2 pointtype 7, \
-      fname using 1:2:4 title "Exact" with lines
+set xlabel "p_x"
+set ylabel "p_y"
+set zlabel "theta"
+splot fname using 1:2:3:4 with pm3d
 pause -1
