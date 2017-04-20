@@ -1,0 +1,4 @@
+set datafile separator ","
+splot fname using 1:2:3 title "ADI" with points palette pointsize 2 pointtype 7, \
+      fname using 1:2:4 title "Exact" with lines
+pause -1
