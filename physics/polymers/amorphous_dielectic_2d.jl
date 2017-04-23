@@ -63,11 +63,11 @@ s = ArgParseSettings();
   "--k1", "-K"
     help = "first susceptibility parameter"
     arg_type = Float64
-    default = 1.5
+    default = 0.5
   "--k2", "-L"
     help = "second susceptibility parameter"
     arg_type = Float64
-    default = 0.5
+    default = 1.5
   "--write-E-surface", "-W"
     help = "Write energy surface to file"
     action = :store_true
@@ -173,3 +173,14 @@ println("Δx       =   $(sqrt(exp_xsq - map(x -> x*x, exp_x)))");
 println("<E>      =   $(esum / nsamples)");
 #println("1/2β     =   $(1 / (2*beta))");
 println("Z        =   $Z");
+A = (1/k1-1/k2)*(eye(2)*dot(n0, p0)+n0*p0');
+K = vcat(hcat(inv_chi(n0), A), hcat(A', (1/k1-1/k2)*p0*p0'));
+prod = 1.0;
+lambdas = eigvals(K);
+for lambda in lambdas
+  if abs(lambda) > 1e-10; prod *= lambda; end
+end
+@show wtilde = potential(vcat(p0, n0), inv_chi, E0);
+
+@show exp(-beta*wtilde);
+println("Z (antc) =   $(exp(-beta*wtilde)*(2*pi)^3/(beta^2*sqrt(prod))));
