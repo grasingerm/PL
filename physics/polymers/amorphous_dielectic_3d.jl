@@ -1,15 +1,12 @@
 function potential(x::Vector{Float64},
                    inv_chi::Function, E0::Vector{Float64})
   p = view(x, 1:3);
-  n = view(x, 4:6);
+  cphi = cos(x[4]);
+  sphi = sin(x[4]);
+  ctheta = cos(x[5]);
+  stheta = sin(x[5]);
+  n = [cphi * stheta; sphi * stheta; ctheta];
   return 0.5 * dot(p, inv_chi(n) * p) - dot(p, E0);
-end
-
-function rotation(dtheta::Real)
-  rx = [1.0 0.0 0.0; 0.0 cos(dtheta) -sin(dtheta); 0.0 sin(dtheta) cos(dtheta)];
-  ry = [cos(dtheta) 0.0 sin(dtheta); 0.0 1.0 0.0; -sin(dtheta) 0.0 cos(dtheta)];
-  rz = [cos(dtheta) -sin(dtheta) 0.0; sin(dtheta) cos(dtheta) 0.0; 0.0 0.0 1.0];
-  return rx*ry*rz;
 end
 
 function metropolis(u0::Real, u1::Real, beta::Real)
@@ -28,7 +25,6 @@ function kawasaki(u0::Real, u1::Real, beta::Real)
 end
 
 using ArgParse;
-using PyPlot;
 
 s = ArgParseSettings();
 @add_arg_table s begin
@@ -59,15 +55,19 @@ s = ArgParseSettings();
   "--dx", "-D"
     help = "element size"
     arg_type = Float64
-    default = 0.1
+    default = 0.2
+  "--dtheta", "-T"
+    help = "element angle size"
+    arg_type = Float64
+    default = 0.2
   "--k1", "-K"
     help = "first susceptibility parameter"
     arg_type = Float64
-    default = 1.5
+    default = 0.5
   "--k2", "-L"
     help = "second susceptibility parameter"
     arg_type = Float64
-    default = 0.5
+    default = 1.5
   "--write-E-surface", "-W"
     help = "Write energy surface to file"
     action = :store_true
@@ -75,12 +75,16 @@ s = ArgParseSettings();
     help = "Frequency with which to sample for data file"
     arg_type = Int
     default = 25
+  "--output-step", "-O"
+    help = "Frequency with which to output step (% complete)"
+    arg_type = Float64
+    default = 0.1
 end
 
 pa = parse_args(s); 
 
 const phi0 = pa["phi0"];
-const n0 = [0.0; cos(phi0); sin(phi0)];
+const n0 = [phi0; 0.0];
 const k1 = pa["k1"];
 const k2 = pa["k2"];
 const E0 = [pa["E0"]; 0.0; 0.0];
@@ -91,17 +95,19 @@ inv_chi(n) = 1/k1 * n * n' + 1/k2 * (eye(3) - n * n');
 acc_func = eval(parse(pa["accept"]));
 const delta = pa["delta"];
 const dx = pa["dx"];
+const dtheta = pa["dtheta"];
 const dsample = pa["sample-frequency"];
 const write_datafile = pa["write-E-surface"];
+const output_step = Int(round(nsteps * pa["output-step"]));
 
-xsum = zeros(6);
-xsqsum = zeros(6);
+xsum = zeros(5);
+xsqsum = zeros(5);
 pmagsum = 0.;
 esum = 0.;
 counter = 0;
 nsamples = 0;
 
-x0 = vcat(p0; n0);
+x0 = vcat(p0, n0);
 u0 = potential(x0, inv_chi, E0);
 u = u0;
 x = copy(x0);
@@ -113,12 +119,21 @@ datafile = ((write_datafile) ?
              nothing);
 
 for step = 1:nsteps
-  choice = rand(1:6);
+  choice = rand(1:5);
   xtrial = copy(x);
-  if choice < 4
-    xtrial[choice] += rand(-delta:1e-9:delta);
-  else
-    xtrial[4:6] *= rotation(rand(-delta:1e-9:delta));
+  xtrial[choice] += rand(-delta:1e-9:delta);
+  if choice == 4
+    if xtrial[choice] < 0
+      xtrial[choice] += 2*pi;
+    elseif xtrial[choice] > 2*pi
+      xtrial[choice] -= 2*pi;
+    end
+  elseif choice == 5
+    if xtrial[choice] < 0
+      xtrial[choice] += pi;
+    elseif xtrial[choice] > pi
+      xtrial[choice] -= pi;
+    end
   end
   utrial = potential(xtrial, inv_chi, E0);
   if acc_func(u, utrial, beta)
@@ -135,9 +150,8 @@ for step = 1:nsteps
     if (x[1] > x0[1] - dx && x[1] < x0[1] + dx
         && x[2] > x0[2] - dx && x[2] < x0[2] + dx
         && x[3] > x0[3] - dx && x[3] < x0[3] + dx
-        && x[4] > x0[4] - dx && x[4] < x0[4] + dx
-        && x[5] > x0[5] - dx && x[5] < x0[5] + dx
-        && x[6] > x0[6] - dx && x[6] < x0[6] + dx)
+        && x[4] > x0[4] - dtheta && x[4] < x0[4] + dtheta
+        && x[5] > x0[5] - dtheta && x[5] < x0[5] + dtheta)
       counter += 1;
     end
     if write_datafile
@@ -147,18 +161,47 @@ for step = 1:nsteps
       write(datafile, "$u\n");
     end
   end
+
+  if step % output_step == 0
+    println(step, " / ", nsteps);
+  end
 end
 
 if write_datafile; close(datafile); end
 
 exp_x = xsum / nsamples;
 exp_xsq = xsqsum / nsamples;
-px0 = counter / (nsamples * (2 * dx)^6);
-Z = exp(-beta * u0) / px0;
+px0 = counter / (nsamples * (2 * dx)^3 * (2 * dtheta)^2);
+#Z = exp(-beta * u0) / px0;
+Z = 1 / px0;
 println("<x>      =   $(exp_x)");
 println("<x^2>    =   $(exp_xsq)");
 println("<|p|^2>  =   $(pmagsum / nsamples)");
 println("Δx       =   $(sqrt(exp_xsq - map(x -> x*x, exp_x)))");
 println("<E>      =   $(esum / nsamples)");
-#println("1/2β     =   $(1 / (2*beta))");
-println("Z        =   $Z");
+println("Z     prop   $Z");
+println("u0       =   $u0");
+println("exp(-β*U0) = $(exp(-beta*u0))");
+
+cphi = cos(n0[1]);
+sphi = sin(n0[1]);
+ctheta = cos(n0[2]);
+stheta = sin(n0[2]);
+n = [cphi * stheta; sphi * stheta; ctheta];
+A = (1/k1 - 1/k2)*(eye(3)*dot(n, p0) + n*p0');
+K = vcat(hcat(inv_chi(n), A), hcat(A', (1/k1-1/k2)*p0*p0'));
+@assert(size(K) == (6, 6));
+lambdas = eigvals(K);
+plambda = 1.0;
+Z_an = 1.0;
+for lambda in lambdas
+  @assert(lambda > -1e-8, "negative eigenvalue: $lambda");
+  if abs(lambda) > 1e-8
+    plambda *= lambda;
+    Z_an *= sqrt(2 * π / (beta * lambda));
+  end
+end
+println("Πλ        =   $plambda");
+println("Πλ (alg)  =   $(norm(E0, 2)^2 * (k2 - k1) / (k1 * k2^2))");
+println("Z_an      =   $Z_an");
+println("ratio     =   $(Z / Z_an)");
