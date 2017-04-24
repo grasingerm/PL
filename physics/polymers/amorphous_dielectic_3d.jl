@@ -172,16 +172,18 @@ if write_datafile; close(datafile); end
 exp_x = xsum / nsamples;
 exp_xsq = xsqsum / nsamples;
 px0 = counter / (nsamples * (2 * dx)^3 * (2 * dtheta)^2);
-#Z = exp(-beta * u0) / px0;
-Z = 1 / px0;
+pdf0 = exp(-beta*u0);
+Zprop = 1 / px0;
+Z = pdf0 * Zprop;
 println("<x>      =   $(exp_x)");
 println("<x^2>    =   $(exp_xsq)");
 println("<|p|^2>  =   $(pmagsum / nsamples)");
 println("Δx       =   $(sqrt(exp_xsq - map(x -> x*x, exp_x)))");
 println("<E>      =   $(esum / nsamples)");
-println("Z     prop   $Z");
+println("Z     prop   $Zprop");
 println("u0       =   $u0");
-println("exp(-β*U0) = $(exp(-beta*u0))");
+println("exp(-β*U0) = $pdf0");
+println("Z        =   $Z");
 
 cphi = cos(n0[1]);
 sphi = sin(n0[1]);

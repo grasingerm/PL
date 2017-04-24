@@ -35,4 +35,30 @@
 	\subsection{Source Code}
 	
 	\includepdf[pages=-]{./hw5_code.pdf}
+	
+	\section{Douglas-Rachford (Optional)}
+	
+	For the Douglas-Rachford scheme the grid spacings were $h = \frac{1}{10}, \frac{1}{20}$ and $\frac{1}{40}$, but $k$ was taken to be $k = h^2$ because the Douglas-Rachford scheme is second order accurate in space but only first order accurate in time.
+	The relative $L_\infty$ errors for $h = \frac{1}{10}, \frac{1}{20}$ and $\frac{1}{40}$ were 0.00114, 0.000393, and 0.000314, respectively.
+	Notice that, roughly, when $h$ was halved the first time (from $h = \frac{1}{10}$ to $h = \frac{1}{20}$ and $k = \frac{1}{100}$ to $k = \frac{1}{400}$) the error decreased by a factor of four, which agrees with the theory.
+	However, when $h$ was halved again there were diminishing returns on the accuracy as the accuracy only increased by less than 25\%.
+	In the three figures that follow, the ADI approximation is compared with the exact solution.
+	The approximation agrees well with the exact solution in all cases.
+	
+	{
+		\centering
+		\includegraphics[width=\fw]{h-0100_dr}
+		\captionof{figure}{ADI approximation compared with exact solution. $h = \frac{1}{10}$, $k = \frac{1}{100}$.}
+		\vspace{0.25in}
+		\includegraphics[width=\fw]{h-0050_dr}
+		\captionof{figure}{ADI approximation compared with exact solution. $h = \frac{1}{20}$, $k = \frac{1}{400}$.}
+		\vspace{0.25in}
+		\includegraphics[width=\fw]{h-0025_dr}
+		\captionof{figure}{ADI approximation compared with exact solution. $h = \frac{1}{40}$, $k = \frac{1}{1600}$.}
+		\vspace{0.25in}
+	}
+	
+	\subsection{Source Code}
+	
+	\includepdf[pages=-]{./hw5dr.pdf}
 \end{document}
