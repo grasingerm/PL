@@ -1,0 +1,63 @@
+Jacobi iterative solution, h = 0.1
+   time elapsed:     0.004197835922241211
+   iterations:       286
+   sec/iteration:    1.4677747979864373e-5
+   converged:        true
+   rel. L2 error:    5.604084855203742e-5
+
+Jacobi iterative solution, h = 0.05
+   time elapsed:     0.08460402488708496
+   iterations:       1098
+   sec/iteration:    7.70528459809517e-5
+   converged:        true
+   rel. L2 error:    1.4088944068211665e-5
+
+Jacobi iterative solution, h = 0.025
+   time elapsed:     0.682297945022583
+   iterations:       4180
+   sec/iteration:    0.0001632291734503787
+   converged:        true
+   rel. L2 error:    2.14377570070329e-6
+
+Gauss-Seidel iterative solution, h = 0.1
+   time elapsed:     0.0020170211791992188
+   iterations:       152
+   sec/iteration:    1.3269876178942228e-5
+   converged:        true
+   rel. L2 error:    5.624218515105956e-5
+
+Gauss-Seidel iterative solution, h = 0.05
+   time elapsed:     0.0244901180267334
+   iterations:       580
+   sec/iteration:    4.222434142540241e-5
+   converged:        true
+   rel. L2 error:    1.451514372688249e-5
+
+Gauss-Seidel iterative solution, h = 0.025
+   time elapsed:     0.3040142059326172
+   iterations:       2207
+   sec/iteration:    0.0001377499800329031
+   converged:        true
+   rel. L2 error:    2.985097232356857e-6
+
+SOR iterative solution, h = 0.1
+   time elapsed:     0.0005340576171875
+   iterations:       37
+   sec/iteration:    1.4433989653716216e-5
+   converged:        true
+   rel. L2 error:    5.639472054373996e-5
+
+SOR iterative solution, h = 0.05
+   time elapsed:     0.0026369094848632812
+   iterations:       71
+   sec/iteration:    3.713957020934199e-5
+   converged:        true
+   rel. L2 error:    1.49024396571672e-5
+
+SOR iterative solution, h = 0.025
+   time elapsed:     0.017843961715698242
+   iterations:       139
+   sec/iteration:    0.0001283738252927931
+   converged:        true
+   rel. L2 error:    3.8099858389904924e-6
+

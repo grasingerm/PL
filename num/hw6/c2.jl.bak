@@ -1,0 +1,123 @@
+analytical_soln(x::Real, y::Real) = cos(x) * sin(y);
+
+force(x::Real, y::Real) = -2.0 * cos(x) * sin(y);
+
+idx(i::Int, j::Int, n::Int) = (i-1) * n + j;
+
+function initialize_data(h::Real)
+  const n = Int(round(1/h) + 1);
+  A = zeros(n*n, n*n);
+  b = zeros(n*n);
+  for (i, x) in zip(1:n, 0.0:h:1.0), (j, y) in zip(1:n, 0.0:h:1.0)
+    if (abs(x - 0.0) < 1e-12 || abs(x - 1.0) < 1e-12 ||
+        abs(y - 0.0) < 1e-12 || abs(y - 1.0) < 1e-12) # set BC
+      A[idx(i, j, n), idx(i, j, n)] = 1.0;
+      b[idx(i, j, n)] = analytical_soln(x, y);
+    else
+      A[idx(i, j, n), idx(i, j, n)] = -4.0;
+      A[idx(i, j, n), idx(i, j+1, n)] = 1.0;
+      A[idx(i, j, n), idx(i, j-1, n)] = 1.0;
+      A[idx(i, j, n), idx(i+1, j, n)] = 1.0;
+      A[idx(i, j, n), idx(i-1, j, n)] = 1.0;
+      b[idx(i, j, n)] = h*h*force(x, y);
+    end
+  end
+  return A, b;
+end
+
+function conjugate_gradient(h::Real; tol::Real=1e-7)
+
+  # initialize data
+  const A, b = initialize_data(h);
+  x = zeros(length(b));
+  const start_time = time();
+
+  r = b - A * x;
+  p = r;
+  r2_prev = dot(r, r);
+
+  for iteration = 1:length(b)
+    const Ap = A*p;
+    const alpha = r2_prev / dot(p, Ap);
+    const alphap = alpha * p;
+    x += alphap;
+    
+    # check for convergence
+    if norm(alphap, 2) < tol
+      return x, iteration, time() - start_time, true;
+    end
+    
+    # otherwise, find new search direction
+    r -= alpha * Ap;
+    r2_new = dot(r, r);
+    p = r + (r2_new / r2_prev) * p;
+    r2_prev = r2_new;
+  end
+
+  return x, length(b), time() - start_time, false;
+end
+
+function conjugate_gradient_test(; tol=1e-7)
+
+  # initialize data
+  const A = [4.0 1.0; 1.0 3.0];
+  const b = [1.0; 2.0];
+  x = [2.0; 1.0];
+
+  r = b - A * x;
+  p = r;
+  r2_prev = dot(r, r);
+
+  for iteration = 1:length(b)+1
+    @show const Ap = A*p;
+    @show const alpha = r2_prev / dot(p, Ap);
+    @show const alphap = alpha * p;
+    @show x += alphap;
+    
+    # check for convergence
+    if norm(alphap, 2) < tol
+      return x, iteration, true;
+    end
+    
+    # otherwise, find new search direction
+    @show r -= alpha * Ap;
+    @show r2_new = dot(r, r);
+    @show p = r + (r2_new / r2_prev) * p;
+    @show r2_prev = r2_new;
+  end
+
+  return x, length(b), false;
+end
+
+#=
+for h in [0.1; 0.05; 0.025]
+  println("Conjugate gradient, h = ", h);
+  approx_soln, iterations, time_elapsed, did_converge = conjugate_gradient(h);
+  println("   time elapsed:     ", time_elapsed);
+  println("   iterations:       ", iterations);
+  println("   sec/iteration:    ", time_elapsed / iterations);
+  println("   converged:        ", (did_converge) ? "true" : "false");
+
+  A, b = initialize_data(h);
+  test_soln = A \ b;
+  const n = Int(round(1/h) + 1);
+  num1 = 0.0;
+  num2 = 0.0;
+  den = 0.0;
+  for (j, y) in zip(1:n, 0.0:h:1.0), (i, x) in zip(1:n, 0.0:h:1.0)
+    num1 += (approx_soln[idx(i, j, n)] - analytical_soln(x, y))^2;
+    num2 += (test_soln[idx(i, j, n)] - analytical_soln(x, y))^2;
+    den += (analytical_soln(x, y))^2;
+  end
+
+  println("   rel. L2 error:    ", sqrt(num1 / den));
+  println("   rel. L2 error (test): ", sqrt(num2 / den));
+
+  println("   error in linear solution of equations: ", 
+          norm(test_soln - approx_soln, 2) / norm(test_soln, 2));
+  
+  println();
+end
+=#
+
+@show conjugate_gradient_test()
