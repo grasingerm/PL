@@ -32,10 +32,6 @@ s = ArgParseSettings();
     help = "magnitude electric field"
     arg_type = Float64
     default = 1.5
-  "--phi0", "-p"
-    help = "initial monomer angle"
-    arg_type = Float64
-    default = 1.5
   "--beta", "-B"
     help = "1 / kT"
     arg_type = Float64
@@ -79,16 +75,33 @@ s = ArgParseSettings();
     help = "Frequency with which to output step (% complete)"
     arg_type = Float64
     default = 0.1
+  "--phi", "-p"
+    help = "IF k2 > k1, this is the intial angle of the monomer direction"
+    argu_type = Float64
+    default = pi / 2
+  "--anti-align", "-A"
+    help = "IF k1 > k2, this is sets the monomer to anti-align with E field"
+    action = :store_true
 end
 
 pa = parse_args(s); 
 
-const phi0 = pa["phi0"];
-const n0 = [phi0; 0.0];
+const phi = pa["phi"];
+const anti_align = pa["anti-align"];
 const k1 = pa["k1"];
 const k2 = pa["k2"];
+if k1 > k2
+  n = (anti_align) ? [-1.0; 0.0; 0.0] : [1.0; 0.0; 0.0];
+elseif k2 > k1
+  n = [0.0; cos[phi]; sin[phi]];
+else
+  error("k1 cannot equal k2. Susceptibility is ill-defined."); 
+end
+S = [0 n[3] -n[2]; -n[3] 0 n[1]; n[2] -n[1] 0];
+@assert(norm(S - S', Inf) < 1e-10);
+
 const E0 = [pa["E0"]; 0.0; 0.0];
-const p0 = k2 * E0;
+const p0 = (k1 > k2) k1 * E0 : k2 * E0;
 const beta = pa["beta"];
 const nsteps = pa["num-steps"];
 inv_chi(n) = 1/k1 * n * n' + 1/k2 * (eye(3) - n * n');
