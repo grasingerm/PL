@@ -77,7 +77,7 @@ s = ArgParseSettings();
     default = 0.1
   "--phi", "-p"
     help = "IF k2 > k1, this is the intial angle of the monomer direction"
-    argu_type = Float64
+    arg_type = Float64
     default = pi / 2
   "--anti-align", "-A"
     help = "IF k1 > k2, this is sets the monomer to anti-align with E field"
@@ -91,17 +91,17 @@ const anti_align = pa["anti-align"];
 const k1 = pa["k1"];
 const k2 = pa["k2"];
 if k1 > k2
-  n = (anti_align) ? [-1.0; 0.0; 0.0] : [1.0; 0.0; 0.0];
+  const n0 = (anti_align) ? [0.0; 0.0; -1.0] : [0.0; 0.0; 1.0];
 elseif k2 > k1
-  n = [0.0; cos[phi]; sin[phi]];
+  const n0 = [cos(phi); sin(phi); 0.0];
 else
   error("k1 cannot equal k2. Susceptibility is ill-defined."); 
 end
-S = [0 n[3] -n[2]; -n[3] 0 n[1]; n[2] -n[1] 0];
-@assert(norm(S - S', Inf) < 1e-10);
+const S = [0 n0[3] -n0[2]; -n0[3] 0 n0[1]; n0[2] -n0[1] 0];
+@assert(norm(S + S', Inf) < 1e-10);
 
-const E0 = [pa["E0"]; 0.0; 0.0];
-const p0 = (k1 > k2) k1 * E0 : k2 * E0;
+const E0 = [0.0; 0.0; pa["E0"]];
+const p0 = (k1 > k2) ? k1 * E0 : k2 * E0;
 const beta = pa["beta"];
 const nsteps = pa["num-steps"];
 inv_chi(n) = 1/k1 * n * n' + 1/k2 * (eye(3) - n * n');
@@ -113,17 +113,44 @@ const dsample = pa["sample-frequency"];
 const write_datafile = pa["write-E-surface"];
 const output_step = Int(round(nsteps * pa["output-step"]));
 
+const A = (1/k1 - 1/k2) * (S * dot(n0, p0) + n0 * cross(n0, p0)');
+const F = (1/k1 - 1/k2) * cross(n0, p0) * cross(n0, p0)';
+const KK = vcat(hcat(inv_chi(n0), A), hcat(A', F));
+approx_potential(x) = begin
+  p = view(x, 1:3);
+  cphi = cos(x[4]);
+  sphi = sin(x[4]);
+  ctheta = cos(x[5]);
+  stheta = sin(x[5]);
+  n = [cphi * stheta; sphi * stheta; ctheta];
+  xfull = vcat(p, n);
+  1/2 * dot(xfull, KK*xfull);
+end
+
 xsum = zeros(5);
 xsqsum = zeros(5);
 pmagsum = 0.;
 esum = 0.;
+e_abs_error_sum = 0.;
+e_sq_error_sum = 0.;
 counter = 0;
 nsamples = 0;
 
-x0 = vcat(p0, n0);
+const n0_angles = (k1 > k2) ? ((anti_align) ? [phi; pi] : [phi; 0]) : [phi; pi / 2];
+x0 = vcat(p0, n0_angles);
 u0 = potential(x0, inv_chi, E0);
 u = u0;
 x = copy(x0);
+
+p, t = n0_angles[1], n0_angles[2];
+ntest = [sin(t)*cos(p); sin(t)*sin(p); cos(t)];
+@assert(k1 > k2 || abs(dot(n0, p0)) < 1e-10);
+@assert(k2 > k1 || norm(n0 * dot(n0, p0) - p0) < 1e-10);
+@assert(k1 > k2 || abs(dot(ntest, p0)) < 1e-10);
+@assert(k2 > k1 || norm(ntest * dot(ntest, p0) - p0) < 1e-10);
+@assert(abs(norm(n0)-1) < 1e-10);
+@assert(abs(norm(ntest)-1) < 1e-10);
+@assert(abs(norm(ntest-n0)) < 1e-10);
 
 datafile = ((write_datafile) ? 
             open(joinpath("data",
@@ -159,7 +186,9 @@ for step = 1:nsteps
     xsqsum += map(a -> a*a, x);
     p = view(x, 1:3);
     pmagsum += dot(p, p);
-    esum += u;
+    esum += u - u0; # only count energy relative to equilibrium
+    e_abs_error_sum = abs((u - u0) - approx_potential(x));
+    e_sq_error_sum = ((u - u0) - approx_potential(x))^2;
     if (x[1] > x0[1] - dx && x[1] < x0[1] + dx
         && x[2] > x0[2] - dx && x[2] < x0[2] + dx
         && x[3] > x0[3] - dx && x[3] < x0[3] + dx
@@ -185,38 +214,46 @@ if write_datafile; close(datafile); end
 exp_x = xsum / nsamples;
 exp_xsq = xsqsum / nsamples;
 px0 = counter / (nsamples * (2 * dx)^3 * (2 * dtheta)^2);
-pdf0 = exp(-beta*u0);
 Zprop = 1 / px0;
-Z = pdf0 * Zprop;
-println("<x>      =   $(exp_x)");
-println("<x^2>    =   $(exp_xsq)");
-println("<|p|^2>  =   $(pmagsum / nsamples)");
-println("Δx       =   $(sqrt(exp_xsq - map(x -> x*x, exp_x)))");
-println("<E>      =   $(esum / nsamples)");
-println("Z     prop   $Zprop");
-println("u0       =   $u0");
-println("exp(-β*U0) = $pdf0");
-println("Z        =   $Z");
+Z = exp(0) * Zprop;
+println("delta             =   $delta;");
+println("beta              =   $beta;");
+println("k1                =   $k1;");
+println("k2                =   $k2;");
+println("E0                =   $E0;");
+println("n0                =   $n0;");
+println("p0                =   $p0;");
+println("u0                =   $u0;");
+println("exp_x             =   $(exp_x);");
+println("exp_x2            =   $(exp_xsq);");
+println("Delta_x           =   $(sqrt(exp_xsq - map(x -> x*x, exp_x)));");
+println("exp_pmag          =   $(pmagsum / nsamples);");
+println("exp_E             =   $(esum / nsamples);");
+println("exp_E_abs_error   =   $(e_abs_error_sum / nsamples);");
+println("exp_E_sq_error    =   $(e_sq_error_sum / nsamples);");
+println("Z_approx          =   $Z;");
 
 cphi = cos(n0[1]);
 sphi = sin(n0[1]);
 ctheta = cos(n0[2]);
 stheta = sin(n0[2]);
-n = [cphi * stheta; sphi * stheta; ctheta];
-A = (1/k1 - 1/k2)*(eye(3)*dot(n, p0) + n*p0');
-K = vcat(hcat(inv_chi(n), A), hcat(A', (1/k1-1/k2)*p0*p0'));
-@assert(size(K) == (6, 6));
-lambdas = eigvals(K);
+@assert(size(KK) == (6, 6));
+lambdas = eigvals(KK);
 plambda = 1.0;
 Z_an = 1.0;
 for lambda in lambdas
-  @assert(lambda > -1e-8, "negative eigenvalue: $lambda");
+  #@assert(lambda > -1e-8, "negative eigenvalue: $lambda");
   if abs(lambda) > 1e-8
     plambda *= lambda;
-    Z_an *= sqrt(2 * π / (beta * lambda));
+    Z_an *= sqrt(2 * π / beta);
   end
 end
-println("Πλ        =   $plambda");
-println("Πλ (alg)  =   $(norm(E0, 2)^2 * (k2 - k1) / (k1 * k2^2))");
-println("Z_an      =   $Z_an");
-println("ratio     =   $(Z / Z_an)");
+Z_an /= sqrt(plambda);
+println("lambdas           =   $lambdas");
+println("plambdas          =   $plambda");
+plambdas_an = (k1 > k2) ? (dot(E0, E0))^2 * (k1 - k2)^4 / (k1 * k2^4) :
+                           dot(E0, E0) * (k2 - k1) / (k1 * k2^2) ;
+println("plambdas_an       =   $plambdas_an");
+println("Z_an              =   $((k1 > k2) ? (4 * sqrt(2) * (pi/beta)^(5/2) / sqrt(plambdas_an)) :
+                                              4 * (pi/beta)^2 / sqrt(plambdas_an));");
+println("E_an              =   $((k1 > k2) ? 5/2 / beta : 2 / beta);");
