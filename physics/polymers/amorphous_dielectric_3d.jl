@@ -124,13 +124,14 @@ approx_potential(x) = begin
   stheta = sin(x[5]);
   n = [cphi * stheta; sphi * stheta; ctheta];
   xfull = vcat(p, n);
-  1/2 * dot(xfull, KK*xfull);
+  return 1/2 * dot(xfull, KK*xfull);
 end
 
 xsum = zeros(5);
 xsqsum = zeros(5);
 pmagsum = 0.;
 esum = 0.;
+esqsum = 0.;
 e_abs_error_sum = 0.;
 e_sq_error_sum = 0.;
 counter = 0;
@@ -139,7 +140,7 @@ nsamples = 0;
 const n0_angles = (k1 > k2) ? ((anti_align) ? [phi; pi] : [phi; 0]) : [phi; pi / 2];
 x0 = vcat(p0, n0_angles);
 u0 = potential(x0, inv_chi, E0);
-u = u0;
+u = 0.0;
 x = copy(x0);
 
 p, t = n0_angles[1], n0_angles[2];
@@ -175,7 +176,7 @@ for step = 1:nsteps
       xtrial[choice] -= pi;
     end
   end
-  utrial = potential(xtrial, inv_chi, E0);
+  utrial = potential(xtrial, inv_chi, E0) - u0;
   if acc_func(u, utrial, beta)
     x = xtrial;
     u = utrial;
@@ -186,9 +187,10 @@ for step = 1:nsteps
     xsqsum += map(a -> a*a, x);
     p = view(x, 1:3);
     pmagsum += dot(p, p);
-    esum += u - u0; # only count energy relative to equilibrium
-    e_abs_error_sum = abs((u - u0) - approx_potential(x));
-    e_sq_error_sum = ((u - u0) - approx_potential(x))^2;
+    esum += u; # only count energy relative to equilibrium
+    eqsum += u*u;
+    e_abs_error_sum = abs(u - approx_potential(x));
+    e_sq_error_sum = (u - approx_potential(x))^2;
     if (x[1] > x0[1] - dx && x[1] < x0[1] + dx
         && x[2] > x0[2] - dx && x[2] < x0[2] + dx
         && x[3] > x0[3] - dx && x[3] < x0[3] + dx
@@ -216,6 +218,8 @@ exp_xsq = xsqsum / nsamples;
 px0 = counter / (nsamples * (2 * dx)^3 * (2 * dtheta)^2);
 Zprop = 1 / px0;
 Z = exp(0) * Zprop;
+exp_E = esum / nsamples;
+exp_E2 = esqsumm / nsamples;
 println("delta             =   $delta;");
 println("beta              =   $beta;");
 println("k1                =   $k1;");
@@ -228,7 +232,9 @@ println("exp_x             =   $(exp_x);");
 println("exp_x2            =   $(exp_xsq);");
 println("Delta_x           =   $(sqrt(exp_xsq - map(x -> x*x, exp_x)));");
 println("exp_pmag          =   $(pmagsum / nsamples);");
-println("exp_E             =   $(esum / nsamples);");
+println("exp_E             =   $exp_E;");
+println("exp_E2            =   $exp_E2;");
+println("Delta_E           =   $(sqrt(exp_E2 - exp_E*exp_E));");
 println("exp_E_abs_error   =   $(e_abs_error_sum / nsamples);");
 println("exp_E_sq_error    =   $(e_sq_error_sum / nsamples);");
 println("Z_approx          =   $Z;");
