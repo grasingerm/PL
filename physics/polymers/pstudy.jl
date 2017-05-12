@@ -9,7 +9,7 @@ phi0s = [rand(0.0:1e-3:2*pi)];
 counter = 1;
 
 datafile = "pstudy_$(Int(round(time()))%rand(200:400)).csv";
-open(w -> write(w, "k1, k2, E0, beta, phi0, delta, n0_1, n0_2, n0_3, p0_1, p0_2, p0_3, u0, exp_x_1, exp_x_2, exp_x_3, exp_x_4, exp_x_5, exp_x2_1, exp_x2_2, exp_x2_3, exp_x2_4, exp_x2_5, Delta_x_1, Delta_x_2, Delta_x_3, Delta_x_4, Delta_x_5, exp_pmag, exp_E, exp_E_abs_error, exp_E_sq_error, Z_approx, lambdas_1, lambdas_2, lambdas_3, lambdas_4, lambdas_5, lambdas_6, plambdas, plambdas_an, Z_an, E_an\n"),
+open(w -> write(w, "k1, k2, E0, beta, phi0, delta, n0_1, n0_2, n0_3, p0_1, p0_2, p0_3, u0, exp_x_1, exp_x_2, exp_x_3, exp_x_4, exp_x_5, exp_x2_1, exp_x2_2, exp_x2_3, exp_x2_4, exp_x2_5, Delta_x_1, Delta_x_2, Delta_x_3, Delta_x_4, Delta_x_5, exp_pmag, exp_E, exp_E2, Delta_E, exp_E_abs_error, exp_E_sq_error, Z_approx, lambdas_1, lambdas_2, lambdas_3, lambdas_4, lambdas_5, lambdas_6, plambdas, plambdas_an, Z_an, E_an\n"),
      datafile, "w");
 for k1 in k1s, k2 in k2s, E0 in E0s, beta in betas, 
     phi0 in phi0s, delta in deltas
@@ -34,7 +34,7 @@ for k1 in k1s, k2 in k2s, E0 in E0s, beta in betas,
          for line in readlines(fname)
            eval(parse(line));
          end
-         write(w, "$k1, $k2, $E0, $beta, $phi0, $delta, $(n0[1]), $(n0[2]), $(n0[3]), $(p0[1]), $(p0[2]), $(p0[3]), $u0, $(exp_x[1]), $(exp_x[2]), $(exp_x[3]), $(exp_x[4]), $(exp_x[5]), $(exp_x2[1]), $(exp_x2[2]), $(exp_x2[3]), $(exp_x2[4]), $(exp_x2[5]), $(Delta_x[1]), $(Delta_x[2]), $(Delta_x[3]), $(Delta_x[4]), $(Delta_x[5]), $exp_pmag, $exp_E, $exp_E_abs_error, $exp_E_sq_error, $Z_approx, $(lambdas[1]), $(lambdas[2]), $(lambdas[3]), $(lambdas[4]), $(lambdas[5]), $(lambdas[6]), $plambdas, $plambdas_an, $Z_an, $E_an\n");
+         write(w, "$k1, $k2, $E0, $beta, $phi0, $delta, $(n0[1]), $(n0[2]), $(n0[3]), $(p0[1]), $(p0[2]), $(p0[3]), $u0, $(exp_x[1]), $(exp_x[2]), $(exp_x[3]), $(exp_x[4]), $(exp_x[5]), $(exp_x2[1]), $(exp_x2[2]), $(exp_x2[3]), $(exp_x2[4]), $(exp_x2[5]), $(Delta_x[1]), $(Delta_x[2]), $(Delta_x[3]), $(Delta_x[4]), $(Delta_x[5]), $exp_pmag, $exp_E, $exp_E2, $Delta_E, $exp_E_abs_error, $exp_E_sq_error, $Z_approx, $(lambdas[1]), $(lambdas[2]), $(lambdas[3]), $(lambdas[4]), $(lambdas[5]), $(lambdas[6]), $plambdas, $plambdas_an, $Z_an, $E_an\n");
 
        end,
        datafile, "a");

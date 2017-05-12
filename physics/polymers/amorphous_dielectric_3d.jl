@@ -188,7 +188,7 @@ for step = 1:nsteps
     p = view(x, 1:3);
     pmagsum += dot(p, p);
     esum += u; # only count energy relative to equilibrium
-    eqsum += u*u;
+    esqsum += u*u;
     e_abs_error_sum = abs(u - approx_potential(x));
     e_sq_error_sum = (u - approx_potential(x))^2;
     if (x[1] > x0[1] - dx && x[1] < x0[1] + dx
@@ -219,7 +219,7 @@ px0 = counter / (nsamples * (2 * dx)^3 * (2 * dtheta)^2);
 Zprop = 1 / px0;
 Z = exp(0) * Zprop;
 exp_E = esum / nsamples;
-exp_E2 = esqsumm / nsamples;
+exp_E2 = esqsum / nsamples;
 println("delta             =   $delta;");
 println("beta              =   $beta;");
 println("k1                =   $k1;");
