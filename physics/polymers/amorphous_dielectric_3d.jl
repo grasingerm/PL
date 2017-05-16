@@ -114,7 +114,8 @@ const write_datafile = pa["write-E-surface"];
 const output_step = Int(round(nsteps * pa["output-step"]));
 
 const A = (1/k1 - 1/k2) * (S * dot(n0, p0) + n0 * cross(n0, p0)');
-const F = (1/k1 - 1/k2) * cross(n0, p0) * cross(n0, p0)';
+const F = (1/k1 - 1/k2) * (n0*p0'*dot(n0, p0) - eye(3)*dot(n0, p0)^2 +
+                           cross(n0, p0) * cross(n0, p0)');
 const KK = vcat(hcat(inv_chi(n0), A), hcat(A', F));
 approx_potential(x) = begin
   p = view(x, 1:3);
@@ -248,18 +249,17 @@ lambdas = eigvals(KK);
 plambda = 1.0;
 Z_an = 1.0;
 for lambda in lambdas
-  #@assert(lambda > -1e-8, "negative eigenvalue: $lambda");
-  if abs(lambda) > 1e-8
+  @assert(lambda > -1e-7, "negative eigenvalue: $lambda");
+  if abs(lambda) > 1e-11
     plambda *= lambda;
-    Z_an *= sqrt(2 * π / beta);
+    Z_an *= sqrt(2 * π / (beta * lambda));
   end
 end
-Z_an /= sqrt(plambda);
 println("lambdas           =   $lambdas");
 println("plambdas          =   $plambda");
-plambdas_an = (k1 > k2) ? (dot(E0, E0))^2 * (k1 - k2)^4 / (k1 * k2^4) :
+plambdas_an = (k1 > k2) ? (dot(E0, E0))^2 * (k1 - k2)^2 / (k1 * k2^2) :
                            dot(E0, E0) * (k2 - k1) / (k1 * k2^2) ;
+@assert(abs(plambda-plambdas_an)/plambda < 5e-2, "incorrect prediction of product of eigenvalues");
 println("plambdas_an       =   $plambdas_an");
-println("Z_an              =   $((k1 > k2) ? (4 * sqrt(2) * (pi/beta)^(5/2) / sqrt(plambdas_an)) :
-                                              4 * (pi/beta)^2 / sqrt(plambdas_an));");
+println("Z_an              =   $Z_an;");
 println("E_an              =   $((k1 > k2) ? 5/2 / beta : 2 / beta);");
