@@ -1,12 +1,12 @@
 const num_steps = Int(2e8);
-E0s = [0.1; 1.0; 10.0];
-betas = [2.0; 20.0; 200.0];
+E0s = [10.0; 12.5; 15.0; 17.5; 20.0; 22.5; 25.0; 27.5; 30.0; 32.5];
+betas = [20.0;];
 deltas = [0.5];
-k1s = [1.1; 5.0; 10.0];
-k2s = [1.0];
-phi0s = [rand(0.0:1e-3:2*pi)];
-dxs = [0.2; 0.02];
-dthetas = [0.2; 0.02];
+k1s = [1.0];
+k2s = [5.0];
+phi0s = [0.0; pi / 4; pi / 2; 3 * pi / 4; pi];
+dxs = [0.01; 0.05; 0.2];
+dthetas = [0.2];
 
 counter = 1;
 
@@ -16,12 +16,14 @@ open(w -> write(w, "k1, k2, E0, beta, phi0, delta, dx, dtheta, n0_1, n0_2, n0_3,
 for dx in dxs, dtheta in dthetas, k1 in k1s, k2 in k2s, E0 in E0s, beta in betas, 
     phi0 in phi0s, delta in deltas
 
+  dtheta = dx;
+
   println("$dx $dtheta $k1 $k2 $E0 $beta $phi0 $delta, $counter");
 
   fname = joinpath("temp", replace(@sprintf("k1-%.2lf_k2-%.2lf_E0-%.2lf_beta-%.2lf_phi0-%.2lf_delta-%.2lf_time-%d",
-                                            k1, k2, E0, beta, phi0, delta, Int(round(time()))%rand(200:400)), "\.", "") * ".txt");
+                                            k1, k2, E0, beta, phi0, delta, Int(round(time()))*rand(10:30)), "\.", "") * ".txt");
 
-  #try
+  try
 
     if rand([true, false])
       run(pipeline(`julia amorphous_dielectric_3d.jl --k1 $k1 --k2 $k2 --E0 $E0 --beta $beta --phi $phi0 --delta $delta --num-steps $num_steps --dx $dx --dtheta $dtheta`, stdout=fname));
@@ -44,13 +46,13 @@ for dx in dxs, dtheta in dthetas, k1 in k1s, k2 in k2s, E0 in E0s, beta in betas
 
     counter += 1;
 
-  #catch x
+  catch x
 
-  #  warn("Error occurred.");
-  #  bt = catch_backtrace();
-  #  showerror(STDERR, x, bt);
-  #  Base.show_backtrace(STDERR, backtrace())
+    warn("Error occurred.");
+    bt = catch_backtrace();
+    showerror(STDERR, x, bt);
+    Base.show_backtrace(STDERR, backtrace())
 
-  #end
+  end
     
 end
