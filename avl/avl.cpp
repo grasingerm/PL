@@ -75,29 +75,34 @@ node *left_rotate(node *pivot) {
 
 node *insert(node *root, int val) {
 
-  assert(root != nullptr);
+  if (root == nullptr)
+    return init_node(val);
 
-  node *pcurr = root, *pprev = nullptr;
-  while (pcurr != nullptr) {
-    pprev = pcurr;
-    pcurr = (val >= pcurr->val) ? pcurr->right : pcurr->left;
-  }
-
-  node *new_node = init_node(val);
+  if (val < root->val)
+    root->left = insert(root->left, val);
+  else if (val >= root->val)
+    root->right = insert(root->right, val);
   
-  if (val >= pprev->val) 
-    pprev->right = new_node;
-  else
-    pprev->left = new_node;
+  root->ht = max(_ht(root->left), _ht(root->right)) + 1;
+  int bf_root = bf(root);
 
-  update_hts(root);
+  if (bf_root > 1 && val < root->left->val)
+    return right_rotate(root);
 
-  if (abs(bf(root)) > 2) {
-    // some rotations at some point
-    // update_hts(root);
+  if (bf_root < -1 && val > root->right->val)
+    return left_rotate(root);
+
+  if (bf_root > 1 && val > root->left->val) {
+    root->left = left_rotate(root->left);
+    return right_rotate(root);
+  }
+  
+  if (bf_root < -1 && val < root->right->val) {
+    root->right = right_rotate(root->right);
+    return left_rotate(root);
   }
 
-  return new_node;
+  return root;
 }
 
 /* extra code for testing/debugging */
@@ -122,17 +127,11 @@ void destroy(node *root) {
 int main() {
 
   node *root = init_node(3);
-  insert(root, 2);
-  insert(root, 4);
-  insert(root, 5);
-  insert(root, 6);
+  root = insert(root, 2);
+  root = insert(root, 4);
+  root = insert(root, 5);
+  root = insert(root, 6);
 
-  cout << "before rotation:\n";
-  print_inorder(root);
-
-  root->right = left_rotate(root->right);
-  
-  cout << "\nafter rotation:\n";
   print_inorder(root);
 
   destroy(root);
