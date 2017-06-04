@@ -97,11 +97,10 @@ elseif k2 > k1
 else
   error("k1 cannot equal k2. Susceptibility is ill-defined."); 
 end
-const S = [0 n0[3] -n0[2]; -n0[3] 0 n0[1]; n0[2] -n0[1] 0];
-@assert(norm(S + S', Inf) < 1e-10);
 
 const E0 = [0.0; 0.0; pa["E0"]];
 const p0 = (k1 > k2) ? k1 * E0 : k2 * E0;
+const n0_angles = (k1 > k2) ? ((anti_align) ? [phi; pi] : [phi; 0]) : [phi; pi / 2];
 const beta = pa["beta"];
 const nsteps = pa["num-steps"];
 inv_chi(n) = 1/k1 * n * n' + 1/k2 * (eye(3) - n * n');
@@ -113,19 +112,20 @@ const dsample = pa["sample-frequency"];
 const write_datafile = pa["write-E-surface"];
 const output_step = Int(round(nsteps * pa["output-step"]));
 
-const A = (1/k1 - 1/k2) * (S * dot(n0, p0) + n0 * cross(n0, p0)');
-const F = (1/k1 - 1/k2) * (n0*p0'*dot(n0, p0) - eye(3)*dot(n0, p0)^2 +
-                           cross(n0, p0) * cross(n0, p0)');
-const KK = vcat(hcat(inv_chi(n0), A), hcat(A', F));
+sp, st = sin(n0_angles[1]), sin(n0_angles[2]);
+cp, ct = cos(n0_angles[1]), cos(n0_angles[2]);
+s2p, s2t = sin(2*n0_angles[1]), sin(2*n0_angles[2]);
+c2p, c2t = cos(2*n0_angles[1]), cos(2*n0_angles[2]);
+const upper_right = [(k1-k2)*st*st*(-p0[2]*c2p+p0[3]*cot(n0_angles[2])*sp+p0[1]*s2p) (-((k1-k2)*cp*(p0[3]*c2t+s2t*(p0[1]*cp+p0[2]*sp))));
+                     (k1-k2)*st*st*(p0[1]*c2p+p0[3]*cot(n0_angles[2])*cp+p0[2]*s2p) (-((k1-k2)*sp*(p0[3]*c2t+s2t*(p0[1]*cp+p0[2]*sp))));
+                     (k1-k2)*ct*st*(-p0[2]*cp+p0[1]*sp) -((k1-k2)*(p0[3]*s2t+c2t*(p0[1]*cp+p0[2]*sp)))
+                    ] / (k1*k2);
+const bottom_left = [st*(p0[3]*ct*(p0[1]*cp+p0[2]*sp)+st*((p0[1]-p0[2])*(p0[1]+p0[2])*c2p+2*p0[1]*p0[2]*s2p)) -(p0[2]*cp-p0[1]sp)*(p0[3]*c2t+s2t*(p0[1]*cp+p0[2]*sp));
+                     -(p0[2]*cp-p0[1]*sp)*(p0[3]*c2t+s2t*(p0[1]*cp+p0[2]*sp)) (-4*p0[3]*s2t*(p0[1]*cp+p0[2]*sp)+c2t*(p0[1]^2+p0[2]^2-2*p0[3]^2+(p0[1]-p0[2])*(p0[1]+p0[2])*c2p+2*p0[1]*p0[2]*s2p))] * (k1-k2) / (k1*k2);
+const KK = vcat(hcat(inv_chi(n0), upper_right), hcat(upper_right', bottom_left));
+@assert(norm(KK - KK', Inf) < 1e-9);
 approx_potential(x) = begin
-  p = view(x, 1:3);
-  cphi = cos(x[4]);
-  sphi = sin(x[4]);
-  ctheta = cos(x[5]);
-  stheta = sin(x[5]);
-  n = [cphi * stheta; sphi * stheta; ctheta];
-  xfull = vcat(p, n);
-  return 1/2 * dot(xfull, KK*xfull);
+  return 1/2 * dot(x, KK*x);
 end
 
 xsum = zeros(5);
@@ -138,7 +138,6 @@ e_sq_error_sum = 0.;
 counter = 0;
 nsamples = 0;
 
-const n0_angles = (k1 > k2) ? ((anti_align) ? [phi; pi] : [phi; 0]) : [phi; pi / 2];
 x0 = vcat(p0, n0_angles);
 u0 = potential(x0, inv_chi, E0);
 u = 0.0;
@@ -257,9 +256,8 @@ for lambda in lambdas
 end
 println("lambdas           =   $lambdas");
 println("plambdas          =   $plambda");
-plambdas_an = (k1 > k2) ? (dot(E0, E0))^2 * (k1 - k2)^2 / (k1 * k2^2) :
-                           dot(E0, E0) * (k2 - k1) / (k1 * k2^2) ;
+plambdas_an = (k1 > k2) ? dot(E0, E0) * (k1 - k2) / (k1 * k2^2) : dot(E0, E0) * (k2 - k1) / (k1 * k2^2) ;
 @assert(abs(plambda-plambdas_an)/plambda < 5e-2, "incorrect prediction of product of eigenvalues");
 println("plambdas_an       =   $plambdas_an");
 println("Z_an              =   $Z_an;");
-println("E_an              =   $((k1 > k2) ? 5/2 / beta : 2 / beta);");
+println("E_an              =   $(2 / beta);");

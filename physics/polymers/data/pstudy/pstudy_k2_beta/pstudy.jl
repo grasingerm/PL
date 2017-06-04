@@ -2,9 +2,9 @@ const num_steps = Int(2e8);
 betas = [10.0; 12.5; 15.0; 17.5; 20.0; 22.5; 25.0; 27.5; 30.0; 32.5];
 E0s = [20.0;];
 deltas = [0.5];
-k1s = [5.0];
-k2s = [1.0];
-phi0s = [0.0; pi / 4];
+k1s = [1.0];
+k2s = [5.0];
+phi0s = [0.0; pi / 4; pi / 2; 3 * pi / 4; pi];
 dxs = [0.01; 0.05; 0.2];
 dthetas = [0.2];
 
@@ -26,9 +26,9 @@ for dx in dxs, dtheta in dthetas, k1 in k1s, k2 in k2s, E0 in E0s, beta in betas
   try
 
     if rand([true, false])
-      run(pipeline(`julia amorphous_dielectric_3d.jl --k1 $k1 --k2 $k2 --E0 $E0 --beta $beta --phi $phi0 --delta $delta --num-steps $num_steps --dx $dx --dtheta $dtheta`, stdout=fname));
+      run(pipeline(`julia ../../../amorphous_dielectric_3d.jl --k1 $k1 --k2 $k2 --E0 $E0 --beta $beta --phi $phi0 --delta $delta --num-steps $num_steps --dx $dx --dtheta $dtheta`, stdout=fname));
     else
-      run(pipeline(`julia amorphous_dielectric_3d.jl --k1 $k1 --k2 $k2 --E0 $E0 --beta $beta --phi $phi0 --delta $delta --num-steps $num_steps -A --dx $dx --dtheta $dtheta`, stdout=fname));
+      run(pipeline(`julia ../../../amorphous_dielectric_3d.jl --k1 $k1 --k2 $k2 --E0 $E0 --beta $beta --phi $phi0 --delta $delta --num-steps $num_steps -A --dx $dx --dtheta $dtheta`, stdout=fname));
     end
 
 
