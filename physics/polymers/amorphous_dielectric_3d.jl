@@ -243,7 +243,7 @@ cphi = cos(n0[1]);
 sphi = sin(n0[1]);
 ctheta = cos(n0[2]);
 stheta = sin(n0[2]);
-@assert(size(KK) == (6, 6));
+@assert(size(KK) == (5, 5));
 lambdas = eigvals(KK);
 plambda = 1.0;
 Z_an = 1.0;
