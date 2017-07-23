@@ -53,12 +53,16 @@ s = ArgParseSettings();
   "--dx", "-D"
     help = "element size"
     arg_type = Float64
+    default = 0.05
+  "--output-step", "-O"
+    help = "Frequency with which to output step (% complete)"
+    arg_type = Float64
     default = 0.1
 end
 
 pa = parse_args(s);
 
-function harmonic_potential(k1::Real, k2::Real, x::Real)
+function harmonic_potential(k1::Real, k2::Real, x::Vector{Float64})
   return (0.5 * (k1 * dot(x[1:2], x[1:2]) + 
                  k2 * dot(x[3:4]-x[1:2], x[3:4]-x[1:2])));
 end
@@ -72,6 +76,7 @@ const nsteps = pa["num-steps"];
 acc_func = eval(parse(pa["accept"]));
 const delta = pa["delta"];
 const dx = pa["dx"];
+const output_step = Int(round(nsteps * pa["output-step"]));
 
 xsum = 0.0;
 xsqsum = 0.0;
@@ -79,12 +84,12 @@ esum = 0.0;
 counter = 0;
 
 x = vcat(x0, r0);
-u = harmonic_potential(k, x);
+u = harmonic_potential(k1, k2, x);
 const u0 = u;
 
 for step = 1:nsteps
   xtrial = x + vcat(rand(-delta:1e-9:delta, 2), zeros(2));
-  utrial = harmonic_potential(k, xtrial);
+  utrial = harmonic_potential(k1, k2, xtrial);
   if acc_func(u, utrial, beta)
     x = xtrial;
     u = utrial;
@@ -97,11 +102,15 @@ for step = 1:nsteps
      x[2] > x0[2] - dx && x[2] < x0[2] + dx
     counter += 1;
   end
+  
+  if step % output_step == 0
+    println(step, " / ", nsteps);
+  end
 
 end
 
-r = [0; 0; 0; 0; -im * r0[1], -im * r0[2]];
-K = [beta*(k1 + k2)/2       0                 -beta*k2/2      0           0       0;
+r = [0; 0; 0; 0; -im * r0[1]; -im * r0[2]];
+K = [beta*(k1+k2)/2         0                 -beta*k2/2      0           0       0;
      0                      beta*(k1+k2)/2    0               -beta*k2/2  0       0;
      -beta*k2/2             0                 beta*k2/2       0           -im/2   0;
      0                      -beta*k2/2        0               beta*k2/2   0       -im/2;
@@ -109,20 +118,26 @@ K = [beta*(k1 + k2)/2       0                 -beta*k2/2      0           0     
      0                      0                 0               -im/2       0       0];
 
 lambdas, V = eig(K);
-diagonalized = V' * K * V;
+diagonalized = transpose(V) * K * V;
 for i=1:6, j=1:6
   if i == j; continue; end
   if abs(diagonalized[i, j]) > 1e-9
     warn("Stiffness matrix was not properly diagonalized");
   end
 end
-q = V'*r;
+q = transpose(V)*r;
+println("\ndebug info...");
+@show K - transpose(K)
+@show lambdas, V
+@show diagonalized
+@show q
+println();
 
 sm = 0.;
-for k=1:6; sm += q[k]^2/(4*lambdas[k,k]); end
-Z_an = exp(sm) / (2*pi)^2 * sqrt(pi^6 / det(K));
-inv_eigs = map(k -> 1 / (2 * lambdas[k, k]), 1:6);
-xsq_an = map(k -> 1 / (2 * lambdas[k, k]) + q[k]^2 / (4 * lambdas[k, k]^2), 1:6);
+for k=1:6; sm += q[k]^2/(4*lambdas[k]); end
+Z_an = real(exp(sm) / (2*pi)^2 * sqrt(pi^6 / det(K)));
+inv_eigs = map(k -> 1 / (2 * lambdas[k]), 1:6);
+xsq_an = map(k -> 1 / (2 * lambdas[k]) + q[k]^2 / (4 * lambdas[k]^2), 1:6);
 
 exp_x = xsum / nsteps;
 exp_xsq = xsqsum / nsteps;
@@ -139,3 +154,4 @@ println("1/2β       =   $(1 / (2*beta))");
 println("Z          =   $Z1");
 println("Z (an)     =   $Z_an");
 println("< δ(x - x0) > = $exp_x0");
+println("|K|        =   $(det(K))");
