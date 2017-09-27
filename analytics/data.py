@@ -55,10 +55,10 @@ return:
 def row_sums(t):
     sums = []
     for row in t:
-        count = 0
-        for col in row:
-            count = count + col
-        sums.append(count)
+        #count = 0
+        #for col in row:
+        #    count = count + col
+        sums.append(sum(row))
     return sums
           
 
