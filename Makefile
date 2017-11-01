@@ -14,6 +14,9 @@ msizes: msizes.c
     
 msizes_cpp: msizes.c
 	$(CC) $(CFLAGS) msizes.c -o msizes_cpp
+
+avl: avl.cpp
+	$(CC) $(CFLAGS) avl.cpp -o avl
 	
 clean:
-	rm -f *.o read_file accumulate msizes msizes_cpp
+	rm -f *.o read_file accumulate msizes msizes_cpp avl

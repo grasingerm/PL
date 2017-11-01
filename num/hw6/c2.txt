@@ -1,0 +1,21 @@
+Conjugate gradient, h = 0.1
+   time elapsed:     0.0004241466522216797
+   iterations:       28
+   sec/iteration:    1.5148094722202846e-5
+   converged:        true
+   rel. L2 error:    5.6416793358370105e-5
+
+Conjugate gradient, h = 0.05
+   time elapsed:     0.0019061565399169922
+   iterations:       58
+   sec/iteration:    3.286476792960331e-5
+   converged:        true
+   rel. L2 error:    1.4923993244701214e-5
+
+Conjugate gradient, h = 0.025
+   time elapsed:     0.013283014297485352
+   iterations:       118
+   sec/iteration:    0.00011256791777529959
+   converged:        true
+   rel. L2 error:    3.835920588689894e-6
+

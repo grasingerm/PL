@@ -1,0 +1,6 @@
+set datafile separator ","
+set xlabel "p_x"
+set ylabel "p_y"
+set zlabel "theta"
+splot fname using 1:2:3:4 with pm3d
+pause -1
