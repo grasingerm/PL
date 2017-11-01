@@ -1,0 +1,3 @@
+bad.com
+another_bad.com
+very_bad.com
