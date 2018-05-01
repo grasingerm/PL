@@ -1,5 +1,5 @@
-import os
-from subprocess import call
+from requests import *
+import json
 
 f = open("ioc_domains.txt")
 ioc_domains = f.readlines()
@@ -8,10 +8,17 @@ for ioc_domain in ioc_domains:
 	ioc_domain = ioc_domain.strip()
 	print(ioc_domain)
 	# execute this curl command
-	curl_list = ["curl","-XGET","'blah_blah.com:xxxx/_search?pretty'","-H","'Content-Type: application/json'","-d","{\"query\":\"bool\"affected_file\":\"" + ioc_domain + "\"}}}"]
-	call(curl_list)
-	call(["sleep","1"])
-	print(curl_list)
-
+	req = get(ioc_domain)
+	# if we want to pass headers...
+	#req = get(ioc_domain, headers={"Content-Type":"application/json"})
+	req_json = req.text
+	req_dict = json.loads(req_json)
+	# for example, print some info.
+        # print(req_dict["hits"]["total"])
+        # print(req_dict["hits"]["_source"]["ports"])
+	#
+	# w = open("searchdata.csv", "w")
+        # w.write("{}, {}, {}\n".format(req_dict["hits"]["total"], req_dist["hits"]["_source"]["ports"], req_dict[""])
+        # close(w)
 
 f.close()
