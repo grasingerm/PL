@@ -46,6 +46,9 @@ end
 pa = parse_args(s);
 
 const l = pa["dx"];
+const L = pa["length"];
+const E = pa["youngs"];
+const I = pa["moment-of-inertia"];
 
 N1(x) = 1 - 3 * (x / l)^2 + 2 * (x / l)^3;
 N3(x) = 3 * (x / l)^2 - 2 * (x / l)^3;
@@ -70,31 +73,31 @@ if pa["test-int-funcs"]
 
   approx_eq(a, b) = (abs(a - b) < 1e-9);
   @assert(approx_eq(N1(0), 1.0));
-  @assert(approx_eq(N1(L), 0.0));
+  @assert(approx_eq(N1(l), 0.0));
   @assert(approx_eq(N3(0), 0.0));
-  @assert(approx_eq(N3(L), 1.0));
+  @assert(approx_eq(N3(l), 1.0));
   @assert(approx_eq(-dN2dx(0), 1.0));
-  @assert(approx_eq(-dN2dx(L), 0.0));
+  @assert(approx_eq(-dN2dx(l), 0.0));
   @assert(approx_eq(-dN4dx(0), 0.0));
-  @assert(approx_eq(-dN4dx(L), 1.0));
+  @assert(approx_eq(-dN4dx(l), 1.0));
 
   @assert(approx_eq(N2(0), 0.0));
   @assert(approx_eq(N4(0), 0.0));
-  @assert(approx_eq(N2(L), 0.0));
-  @assert(approx_eq(N4(L), 0.0));
+  @assert(approx_eq(N2(l), 0.0));
+  @assert(approx_eq(N4(l), 0.0));
 
   @assert(approx_eq(dN1dx(0), 0.0));
-  @assert(approx_eq(dN1dx(L), 0.0));
+  @assert(approx_eq(dN1dx(l), 0.0));
   @assert(approx_eq(dN3dx(0), 0.0));
-  @assert(approx_eq(dN3dx(L), 0.0));
+  @assert(approx_eq(dN3dx(l), 0.0));
 
-  for x in rand(0.0:1e-6:L, 1000)
+  for x in rand(0.0:1e-6:l, 1000)
     @assert(approx_eq(N1(x) + N3(x), 1.0));
   end
 end
 
 if pa["plot-int-funcs"]
-  xs = linspace(0.0, L, 1000);
+  xs = linspace(0.0, l, 1000);
   plot(xs, map(N1, xs));
   title("N1");
   show();
@@ -135,10 +138,6 @@ if pa["plot-int-funcs"]
   show();
   clf();
 end
-
-const L = pa["length"];
-const E = pa["youngs"];
-const I = pa["moment-of-inertia"];
 
 const Ke = 2 * E * I / l^3 * [ 6     -3*l      -6        -3*l;
                               -3*l    2*l^2     3*l         l^2;
@@ -224,19 +223,21 @@ else
   sw;
 end
 
-aw = -map(w_soln, gcoords);
-aθ = map(θ_soln, gcoords);
+ax = linspace(0.0, L, 1000);
+aw = -map(w_soln, ax);
+aθ = map(θ_soln, ax);
 
-println("relative L2(w) = $(norm(aw - w, 2) / norm(aw, 2))");
-println("relative L2(θ) = $(norm(aθ - θ, 2) / norm(aθ, 2))");
+println("Numerical error at nodes:");
+println("relative L2(w) = $(norm(-map(w_soln, gcoords) - w, 2) / norm(map(w_soln, gcoords), 2))");
+println("relative L2(θ) = $(norm(map(θ_soln, gcoords) - θ, 2) / norm(map(θ_soln, gcoords), 2))");
 
 if pa["plot"]
   subplot(2, 1, 1);
-  plot(gcoords, aw, "k-", gcoords, w, "kx");
+  plot(ax, aw, "-", gcoords, w, "x");
   title("deflected shape");
   legend(["analytical", "FEM"]);
   subplot(2, 1, 2);
-  plot(gcoords, aθ, "k-", gcoords, θ, "kx");
+  plot(ax, aθ, "-", gcoords, θ, "x");
   title("slope");
   legend(["analytical", "FEM"]);
   show();
