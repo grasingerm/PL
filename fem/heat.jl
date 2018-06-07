@@ -11,9 +11,11 @@ function Ke(xs::Matrix{Float64}, δ::Real)
       ∇Ni = [B[1, i](ξ, η); B[2, i](ξ, η)];
       ∇Nj = [B[1, j](ξ, η); B[2, j](ξ, η)];
       Je = J(xs, ξ, η);
-      @assert(abs(Je - 1.0 / (pa["nx"] * pa["ny"] * 4.0)) < 1e-12, "poop");
-      @assert(Je > 0.0, "Jacobian determinant must be positive");
-      return (-dot(∇Ni, ∇Nj) - N[i](ξ, η)*N[j](ξ, η) / δ) * J(xs, ξ, η);
+      invJe = inv(Je);
+      detJe = det(J(xs, ξ, η));
+      @assert(abs(detJe - 1.0 / (pa["nx"] * pa["ny"] * 4.0)) < 1e-12, "poop");
+      @assert(detJe > 0.0, "Jacobian determinant must be positive");
+      return (-dot(invJe*∇Ni, invJe*∇Nj) - N[i](ξ, η)*N[j](ξ, η) / δ) * det(Je);
     end)
   end
   return K;
@@ -22,9 +24,9 @@ end
 function fe(xs::Matrix{Float64})
   return map(i -> begin
     return quad_2p2d((ξ, η) -> begin
-        Je = J(xs, ξ, η);
-        @assert(Je > 0.0, "Jacobian determinant must be positive");
-        return N[i](ξ, η) * Je;
+        detJe = det(J(xs, ξ, η));
+        @assert(detJe > 0.0, "Jacobian determinant must be positive");
+        return N[i](ξ, η) * detJe;
       end);
     end, 1:4);
 end
