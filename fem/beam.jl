@@ -165,7 +165,7 @@ end
 K = zeros(ndofs, ndofs);
 f = zeros(ndofs);
 for elidx=1:nelems
-  egdofs = (VERSION >= v"0.5.0") ? view(gdofs, :, elidx) : sub(gdofs, : , elidx);
+  egdofs = view(gdofs, :, elidx);
   for i=1:4, j=1:4
     K[egdofs[i], egdofs[j]] += Ke[i, j];
   end
