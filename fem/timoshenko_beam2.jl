@@ -98,37 +98,7 @@ const Ke = 2 * E * I / l^3 * [ 6     -3*l      -6        -3*l;
                               -3*l      l^2     3*l       2*l^2  ];
 @assert(norm(Ke-Ke', 2) < 1e-9);
 
-# Timoshenko
-Nt1(ξ::Real) = 1/2*(1 - ξ); 
-Nt2(ξ::Real) = 1/2*(1 + ξ);
-Btb(ξ::Real) = [0; -1/l; 0; 1/l];
-Bts(ξ::Real) = [-1/l; -(1 - ξ)/2; 1/l; -(1 + ξ)/2];
-
-const Db = E*I;
-const Ds = kz*G*area;
-const Kb = (Db / l) * (Float64[0 0 0 0;
-                               0 1 0 -1;
-                               0 0 0 0;
-                               0 -1 0 1;]);
-const Ks = (Ds / l) * (Float64[1      l/2     -1      l/2;
-                               l/2    l^2/3   -l/2    l^2/6;
-                               -1     -l/2    1       -l/2;
-                               l/2    l^2/6   -l/2    l^2/3;]);
-const KsRI = (Ds / l) * (Float64[1      l/2     -1      l/2;
-                                 l/2    l^2/4   -l/2    l^2/4;
-                                 -1     -l/2    1       -l/2;
-                                 l/2    l^2/4   -l/2    l^2/4;]);
-const Ket = Kb + Ks;
-const KetRI = Kb + KsRI;
-@assert(norm(Ket-Ket', 2) < 1e-9);
-@assert(norm(KetRI-KetRI', 2) < 1e-9);
-const fet = l/2 * [q; 0; q; 0];
-
 # integration
-function gauss1D1P(f::Function)
-  return 2.0*f(0.0);
-end
-
 const _GP2_ = [-1/sqrt(3); 1/sqrt(3)];
 const _GW2_ = [1.0; 1.0];
 function gauss1D2P(f::Function)
@@ -149,39 +119,90 @@ function gauss1D3P(f::Function)
   return res;
 end
 
-KbTest = zeros(4, 4);
-KsTest = zeros(4, 4);
-KsRITest = zeros(4, 4);
-for j=1:4, k=1:4
-  KbTest[j, k] = Db*l/2 * gauss1D1P(ξ -> (Btb(ξ)[j])*(Btb(ξ)[k]));
-  KsTest[j, k] = Ds*l/2 * gauss1D2P(ξ -> (Bts(ξ)[j])*(Bts(ξ)[k]));
-  KsRITest[j, k] = Ds*l/2 * gauss1D1P(ξ -> (Bts(ξ)[j])*(Bts(ξ)[k]));
+@assert(abs(gauss1D2P(x -> x) < 1e-7));
+@assert(abs(gauss1D2P(x -> 1) - 2 < 1e-7));
+@assert(abs(gauss1D2P(x -> x^2) - 2/3 < 1e-7));
+@assert(abs(gauss1D3P(x -> x)) < 1e-7);
+@assert(abs(gauss1D3P(x -> 1) - 2) < 1e-7);
+@assert(abs(gauss1D3P(x -> x^2) - 2/3) < 1e-7);
+@assert(abs(gauss1D3P(x -> x^3) - 0) < 1e-7);
+@assert(abs(gauss1D3P(x -> x^4) - 2/5) < 1e-7);
+
+# Timoshenko
+Nt1(ξ::Real) = 1/2*ξ*(1 - ξ); 
+Nt2(ξ::Real) = (1 - ξ^2);
+Nt3(ξ::Real) = 1/2*ξ*(ξ + 1);
+Btb(ξ::Real) = 2/l*[0; ξ-1/2; 0; -2*ξ; 0; ξ+1/2];
+Bts(ξ::Real) = 2/l*[ξ-1/2; -l/4*(ξ^2-ξ); -2*ξ; -l/2*(1-ξ^2); ξ+1/2; -l/4*(ξ^2+ξ)];
+
+const Db = E*I;
+const Ds = kz*G*area;
+const Kb = (Db / (3*l)) * (Float64[0 0 0 0 0 0;
+                                   0 7 0 -8 0 1;
+                                   0 0 0 0 0 0;
+                                   0 -8 0 16 0 -8;
+                                   0 0 0 0 0 0;
+                                   0 1 0 -8 0 7]);
+
+#=const Ks = (Ds / (9*l)) * (Float64[21       -9*l/2      -24       -6*l      3         3*l/2;
+                                   -9*l/2    l^2         6*l       l^2     -3*l/2      -l^2/2;
+                                   -24      6*l         48        0       -24         -6*l;
+                                   -6*l     l^2         0         4*l^2     6*l       l^2;
+                                   3        -3*l/2      -24       6*l       21        9*l/2;
+                                   3*l/2    -l^2/2      -6*l      l^2       9*l/2     l^2]);=#
+const Ks = (Ds / (9*l)) * (Float64[21       9*l/2      -24       6*l      3         3*l/2;
+                                   9*l/2    l^2         6*l       l^2     -3*l/2      -l^2/2;
+                                   -24      6*l         48        0       -24         -6*l;
+                                   6*l     l^2         0         4*l^2     6*l       l^2;
+                                   3        -3*l/2      -24       6*l       21        9*l/2;
+                                   3*l/2    -l^2/2      -6*l      l^2       9*l/2     l^2]);
+@assert(norm(Ks-Ks',Inf) < 1e-9);
+
+KsTest = zeros(6, 6);
+KsRI = zeros(6, 6);
+for j=1:6, k=1:6
+  KsRI[j, k] = Ds*l/2 * gauss1D2P(ξ -> (Bts(ξ)[j])*(Bts(ξ)[k]));
+  KsTest[j, k] = Ds*l/2 * gauss1D3P(ξ -> (Bts(ξ)[j])*(Bts(ξ)[k]));
 end
-#@show KsTest, Ks;
-for j=1:4, k=1:4
-#  @show j, k, Ks[j, k], KsTest[j, k];
-#  @show j, k, KbTest[j, k], Kb[j, k];
-  @assert(abs(Kb[j, k] - KbTest[j, k]) < 1e-6);
-#  @show j, k, KsTest[j, k], Ks[j, k];
+@show KsTest, Ks;
+for j=1:6, k=1:6
+  @show j, k, Ks[j, k], KsTest[j, k];
   @assert(abs(Ks[j, k] - KsTest[j, k]) < 1e-6);
-#  @show j, k, KsRITest[j, k], KsRI[j, k];
-  @assert(abs(KsRI[j, k] - KsRITest[j, k]) < 1e-6);
 end
-#println("Tests passed!");
-#exit();
+exit();
+
+const Ket = Kb + Ks;
+const KetRI = Kb + KsRI;
+@assert(norm(Ket-Ket', 2) < 1e-9);
+@assert(norm(KetRI-KetRI', 2) < 1e-9);
+const fet = l/2 * [q; 0; q; 0];
 
 @assert(L / l == round(L / l), "dx, $l, must go into the length, $L, evenly");
+# EB mesh
 const nnodes = convert(Int, L / l + 1);
 const ndofs = nnodes * 2;
 const nelems = nnodes - 1;
 gcoords = map(i -> l * i, 0:nnodes-1);
 gdofs = Matrix{Int}(4, nelems);
 
+# 3-node element mesh
+const nndoes2 = nelems*2 + 1;
+const ndofs2 = nnodes2 * 2;
+gcoords2 = map(i -> l * i, 0:nnodes2-1);
+gdofs2 = Matrix{Int}(6, nelems);
+
 for i=1:nelems
   gdofs[1, i] = 2 * i - 1;
   gdofs[2, i] = 2 * i;
   gdofs[3, i] = 2 * i + 1;
   gdofs[4, i] = 2 * i + 2;
+  
+  gdofs2[1, i] = 4 * i - 3;
+  gdofs2[2, i] = 4 * i - 2;
+  gdofs2[3, i] = 4 * i - 1;
+  gdofs2[4, i] = 4 * i + 0;
+  gdofs2[5, i] = 4 * i + 1;
+  gdofs2[6, i] = 4 * i + 2;
 end
 
 K = zeros(ndofs, ndofs);
