@@ -218,7 +218,7 @@ const wRI = map(i -> -uRI[2*i - 1], 1:nnodes);
 const θRI = map(i -> uRI[2*i], 1:nnodes);
 
 cw    = (x -> q * x^2 / (24 * E * I ) * (x^2 + 6 * L^2 - 4 * L * x),
-         x -> q*L^2/2 * x - q * L * x^2 / 2 + q * x^3 / 6);
+         x -> q*x/(6*E*I) * (3*L^2 - 3*L*x + x^2));
 
 sw    = (x -> q * x / (24 * E * I) * (L^3 - 2 * L * x^2 + x^3),
          x -> q*x^3 / (6*E*I) - q*L*x^2 / (4*E*I) + q*L^3 / (24*E*I));
@@ -244,7 +244,7 @@ println("relative L2(w) = $(norm(-map(w_soln, gcoords) - w1, 2) / norm(map(w_sol
 println("relative L2(θ) = $(norm(map(θ_soln, gcoords) - θ1, 2) / norm(map(θ_soln, gcoords), 2))");
 
 println()
-println("Numerical error at nodes (Timoshenko):");
+println("Numerical error at nodes (Timoshenko RI):");
 println("relative L2(w) = $(norm(-map(w_soln, gcoords) - wRI, 2) / norm(map(w_soln, gcoords), 2))");
 println("relative L2(θ) = $(norm(map(θ_soln, gcoords) - θRI, 2) / norm(map(θ_soln, gcoords), 2))");
 
