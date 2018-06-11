@@ -1,0 +1,13 @@
+total 40
+-rwx--x--x 1 clementine clementine 179 Mar 11 19:32 baseball.json
+-rw-rw-r-- 1 clementine clementine 269 Mar 29 15:44 hello_person.py
+-rwx--x--x 1 clementine clementine 441 Mar 11 19:32 ioc_domains0.py
+-rwx--x--x 1 clementine clementine 701 Mar 11 19:32 ioc_domains.py
+-rwx--x--x 1 clementine clementine  55 Mar 11 19:32 ioc_domains.txt
+-rw-rw-r-- 1 clementine clementine 551 Apr 10 17:40 menu.py
+-rw-rw-r-- 1 clementine clementine   0 May 22 17:32 output.txt
+-rw-rw-r-- 1 clementine clementine  33 Apr 10 16:57 pwd.txt
+-rw-rw-r-- 1 clementine clementine 148 May 17 17:51 readcsv.py
+-rw-rw-r-- 1 clementine clementine 341 Apr 10 18:06 script.py
+-rw-rw-r-- 1 clementine clementine   0 May  8 17:14 some_file.txt
+-rw-rw-r-- 1 clementine clementine 289 May 17 17:48 writecsv.py
