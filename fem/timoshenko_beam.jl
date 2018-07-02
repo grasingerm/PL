@@ -61,7 +61,7 @@ const G = E / (2*(1+ν));
 const d = pa["depth"];
 
 I, kz, area = if pa["section-shape"] == "circle"
-                pi * d^4 / 4, 6/7, pi*d^2/4;
+                pi * (d/2)^4 / 4, 6/7, pi*d^2/4;
               elseif pa["section-shape"] == "square"
                 d^4 / 12, 5/6, d*d;
               else
@@ -209,10 +209,16 @@ end
 @assert(KRI == KRI', "K must be symmetric");
 
 if pa["print"]
+  println("Element stiffness (RI)");
+  println("Ke (RI) = $KetRI");
   println("Before enforcing BCs");
   println("K = \n$K");
   println("f = \n$f");
 end
+
+@show KRI, fRI;
+@show KRI*fRI;
+KRIbbc = copy(KRI);
 
 #enforce BCs
 bcs = (pa["cantilever"]) ? [(1, 0.0), (2, 0.0)] : [(1, 0.0), (ndofs-1, 0.0)];
@@ -305,3 +311,5 @@ if pa["plot"]
   legend(["analytical", "EB", "Timo.", "TRI"]);
   show();
 end
+
+writedlm("testresults.csv", hcat(gcoords, wRI, θRI), ',');

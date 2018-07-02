@@ -61,7 +61,7 @@ const G = E / (2*(1+ν));
 const d = pa["depth"];
 
 I, kz, area = if pa["section-shape"] == "circle"
-                pi * d^4 / 4, 6/7, pi*d^2/4;
+                pi * (d/2)^4 / 4, 6/7, pi*d^2/4;
               elseif pa["section-shape"] == "square"
                 d^4 / 12, 5/6, d*d;
               else
