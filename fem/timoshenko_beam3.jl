@@ -27,8 +27,8 @@ s = ArgParseSettings();
     help = "Depth of the beam cross-section"
     arg_type = Float64
     default = 1.0
-  "--dist-load", "-q"
-    help = "Distributed load"
+  "--disp-bc", "-b"
+    help = "Displacement BC"
     arg_type = Float64
     default = 1.0
   "--plot", "-p"
@@ -48,6 +48,9 @@ s = ArgParseSettings();
     action = :store_true
   "--cantilever", "-C"
     help = "Fixed at x = 0"
+    action = :store_true
+  "--fixed", "-F"
+    help = "Fixed at x = L"
     action = :store_true
 end
 
@@ -69,9 +72,6 @@ I, kz, area = if pa["section-shape"] == "circle"
                 exit();
                 1.0; # so that type-deduction knows this should always be a float
               end
-
-const q = pa["dist-load"];
-const fe = q * l / 12 * [6; -l; 6; l];
 
 # Euler-Bernolli
 N1(x) = 1 - 3 * (x / l)^2 + 2 * (x / l)^3;
@@ -122,7 +122,6 @@ const Ket = Kb + Ks;
 const KetRI = Kb + KsRI;
 @assert(norm(Ket-Ket', 2) < 1e-9);
 @assert(norm(KetRI-KetRI', 2) < 1e-9);
-const fet = l/2 * [q; 0; q; 0];
 
 # integration
 function gauss1D1P(f::Function)
@@ -197,11 +196,6 @@ for elidx=1:nelems
     K1[egdofs[i], egdofs[j]] += Ket[i, j];
     KRI[egdofs[i], egdofs[j]] += KetRI[i, j];
   end
-  for i=1:4
-    f[egdofs[i]] += fe[i];
-    f1[egdofs[i]] += fet[i];
-    fRI[egdofs[i]] += fet[i];
-  end
 end
 
 @assert(K == K', "K must be symmetric");
@@ -218,13 +212,14 @@ end
 
 @show KRI, fRI;
 @show KRI*fRI;
-writedlm("testK.csv", KRI, ',');
 KRIbbc = copy(KRI);
 
 @show fRI;
 
 #enforce BCs
-bcs = (pa["cantilever"]) ? [(1, 0.0), (2, 0.0)] : [(1, 0.0), (ndofs-1, 0.0)];
+bcs = (pa["cantilever"]) ? [(1, 0.0), (2, 0.0), (ndofs-1, pa["disp-bc"])] : 
+                           [(1, 0.0), (ndofs-1, pa["disp-bc"])];
+if pa["fixed"]; push!(bcs, (ndofs, 0.0)); end;
 
 for bc in bcs
   k, g = bc
@@ -272,46 +267,15 @@ const θ1 = map(i -> u1[2*i], 1:nnodes);
 const wRI = map(i -> -uRI[2*i - 1], 1:nnodes);
 const θRI = map(i -> uRI[2*i], 1:nnodes);
 
-cw    = (x -> q * x^2 / (24 * E * I ) * (x^2 + 6 * L^2 - 4 * L * x),
-         x -> q*x/(6*E*I) * (3*L^2 - 3*L*x + x^2));
-
-sw    = (x -> q * x / (24 * E * I) * (L^3 - 2 * L * x^2 + x^3),
-         x -> q*x^3 / (6*E*I) - q*L*x^2 / (4*E*I) + q*L^3 / (24*E*I));
-
-#compute error
-w_soln, θ_soln = if pa["cantilever"]
-  cw;
-else
-  sw;
-end
-
-ax = linspace(0.0, L, 1000);
-aw = -map(w_soln, ax);
-aθ = map(θ_soln, ax);
-
-println("Numerical error at nodes (EB):");
-println("relative L2(w) = $(norm(-map(w_soln, gcoords) - w, 2) / norm(map(w_soln, gcoords), 2))");
-println("relative L2(θ) = $(norm(map(θ_soln, gcoords) - θ, 2) / norm(map(θ_soln, gcoords), 2))");
-
-println()
-println("Numerical error at nodes (Timoshenko):");
-println("relative L2(w) = $(norm(-map(w_soln, gcoords) - w1, 2) / norm(map(w_soln, gcoords), 2))");
-println("relative L2(θ) = $(norm(map(θ_soln, gcoords) - θ1, 2) / norm(map(θ_soln, gcoords), 2))");
-
-println()
-println("Numerical error at nodes (Timoshenko RI):");
-println("relative L2(w) = $(norm(-map(w_soln, gcoords) - wRI, 2) / norm(map(w_soln, gcoords), 2))");
-println("relative L2(θ) = $(norm(map(θ_soln, gcoords) - θRI, 2) / norm(map(θ_soln, gcoords), 2))");
-
 if pa["plot"]
   subplot(2, 1, 1);
-  plot(ax, aw, "-", gcoords, w, "x", gcoords, w1, "o", gcoords, wRI, "<");
+  plot(gcoords, w, "x", gcoords, w1, "o", gcoords, wRI, "<");
   title("deflected shape");
-  legend(["analytical", "EB", "Timo.", "TRI"]);
+  legend(["EB", "Timo.", "TRI"]);
   subplot(2, 1, 2);
-  plot(ax, aθ, "-", gcoords, θ, "x", gcoords, θ1, "o", gcoords, θRI, "<");
+  plot(gcoords, θ, "x", gcoords, θ1, "o", gcoords, θRI, "<");
   title("slope");
-  legend(["analytical", "EB", "Timo.", "TRI"]);
+  legend(["EB", "Timo.", "TRI"]);
   show();
 end
 
