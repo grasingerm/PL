@@ -280,3 +280,5 @@ if pa["plot"]
 end
 
 writedlm("testresults.csv", hcat(gcoords, wRI, θRI), ',');
+@show wRI, θRI
+@show minimum(eigvals(KRI)), maximum(eigvals(KRI));
