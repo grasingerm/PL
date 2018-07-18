@@ -1,0 +1,56 @@
+[
+  {
+    "opponent" : "Cardinals",
+    "home" : false,
+    "batters" : [
+      {
+        "name" : "Alex",
+        "hits" : 2
+      },
+      {
+        "name" : "Bob",
+        "hits" : 1
+      },
+      {
+        "name" : "Jim",
+        "hits" : 3
+      }
+    ]
+  },
+  {
+    "opponent" : "Brewers",
+    "home" : true,
+    "batters" : [
+      {
+        "name" : "Alex",
+        "hits" : 2
+      },
+      {
+        "name" : "Bob",
+        "hits" : 1
+      },
+      {
+        "name" : "Harry",
+        "hits" : 4
+      }
+    ]
+  },
+  {
+    "opponent" : "Clowns",
+    "home" : true,
+    "batters" : [
+      {
+        "name" : "Alex",
+        "hits" : 4
+      },
+      {
+        "name" : "Harry",
+        "hits" : 1
+      },
+      {
+        "name" : "John",
+        "hits" : 0
+      }
+    ]
+  }
+]
